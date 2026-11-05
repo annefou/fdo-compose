@@ -171,10 +171,12 @@ function readObject(fetched) {
     licence: idOf(root.license),
     profile: idOf(root.conformsTo) || one(root, "http://purl.org/dc/terms/conformsTo"),
     type,
-    accepts: short(one(root, CCA + "accepts")),
+    accepts: one(root, CCA + "accepts"),
     colour: one(root, CCA + "primaryColorHex"),
-    //: a dashboard FDO whose composition is used for the members of this collection
-    memberDashboard: one(root, CCA + "memberDashboard"),
+    //: dashboard FDOs offered for the members of this collection; each says what it accepts
+    memberDashboards: term(root, CCA + "memberDashboard"),
+    //: a dashboard this object asks to be shown with, whatever collection it is opened from
+    ownDashboard: one(root, CCA + "dashboard"),
 
     members: parts.filter((p) => RO_PID.test(p.url) && p.url !== marked).map((p) => p.url),
     claims: parts.filter((p) => p.url.includes("/np/")).map((p) => p.url),
@@ -535,7 +537,7 @@ function describeObject(object) {
     ["PID", link(object.pid)],
     ["Type", object.type.map((t) => el("code", {}, t))],
     ["Profile", object.profile ? el("code", {}, object.profile) : null],
-    ["Accepts", object.accepts ? el("code", {}, object.accepts) : null],
+    ["Accepts", object.accepts ? el("code", {}, short(object.accepts)) : null],
     ["Licence", object.licence],
     ["Crate", link(CRATE(RO_PID.exec(object.pid)[1]), "the RO-Crate ROHub serves")],
   ];
@@ -560,6 +562,35 @@ function compositionTable(object) {
   table.append(body);
   return card("The composition it declares", table,
     el("p", { class: "muted" }, "Every row is an annotation on the Research Object in ROHub. Change one there and reload this page."));
+}
+
+/** The kind of thing an object is, in the profile's terms. */
+function acceptsOf(object) {
+  if (object.storeUrl || object.iadopt?.length) return CCA + "GeospatialDataset";
+  if (kindOf(object) === "Publications") return CCA + "Publication";
+  if (kindOf(object) === "Datasets") return CCA + "Dataset";
+  return null;
+}
+
+/**
+ * The composition an object is shown with: one it names itself, else one the collection
+ * offers for objects of its kind - each candidate dashboard states what it accepts, so a
+ * paper and a geospatial dataset in the same hub are shown differently.
+ */
+async function dashboardFor(object, from) {
+  if (object.ownDashboard) {
+    const own = await objectOf(object.ownDashboard).catch(() => null);
+    if (own?.pages.length) return own;
+  }
+  if (!from) return null;
+  const parent = await objectOf(from).catch(() => null);
+  const candidates = await Promise.all((parent?.memberDashboards || [])
+    .map((pid) => objectOf(pid).catch(() => null)));
+  const usable = candidates.filter((c) => c?.pages.length);
+  const wanted = acceptsOf(object);
+  return usable.find((c) => c.accepts && wanted && c.accepts.endsWith(short(wanted)))
+    || usable.find((c) => !c.accepts)
+    || null;
 }
 
 /** What to show for an object that describes no pages of its own. */
@@ -659,14 +690,11 @@ async function show(pid) {
   // A member opened from a collection is shown the way that collection says its members
   // are shown; failing that, the way this viewer shows an object of its kind.
   let pages = object.pages;
-  if (!pages.length && from) {
-    const parent = await objectOf(from).catch(() => null);
-    if (parent?.memberDashboard) {
-      const template = await objectOf(parent.memberDashboard).catch(() => null);
-      if (template?.pages.length) {
-        pages = template.pages;
-        object.dataset = object;            // the member is what those pages show
-      }
+  if (!pages.length) {
+    const template = await dashboardFor(object, from);
+    if (template?.pages.length) {
+      pages = template.pages;
+      object.dataset = object;              // the member is what those pages show
     }
   }
   if (!pages.length) pages = defaultPages(object);
