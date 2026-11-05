@@ -552,6 +552,7 @@ async function renderPanel(panel, object, into) {
     // written in an annotation, and nothing is written in this viewer.
     section.append(el("h2", { class: "hero-title" }, object.name));
     if (object.description) section.append(el("p", { class: "hero-lead" }, plain(object.description)));
+    if (currentPage?.searchInHero) section.append(searchBox(object));
   } else if (panel.kind === "NoticeView") {
     // The text of a notice is a file in the object (notice.md), so a curator can change it.
     const file = fileFor(object.brand || object, "Notice", /^notice\.(md|txt)$/i);
@@ -561,15 +562,7 @@ async function renderPanel(panel, object, into) {
     section.classList.add("notice");
     section.replaceChildren(el("p", {}, text.trim()));
   } else if (panel.kind === "AskView") {
-    section.append(el("div", { class: "ask" },
-      el("input", { type: "text", placeholder: "Search these resources…", id: "ask" })));
-    const input = section.querySelector("#ask");
-    input.addEventListener("input", () => {
-      searchText = input.value.trim().toLowerCase();
-      const collection = currentPages.find((p) => p.panels.some((x) => x.kind === "MembersView"));
-      if (searchText && collection && collection.title !== currentPage.title) openPage(collection.title);
-    });
-    note("Searches the titles, descriptions and topics of the objects in this collection. No question-answering service is connected to this object.");
+    section.append(searchBox(object));
   } else if (panel.kind === "TopicsView") {
     const members = await readMembers(object);
     const counts = new Map();
@@ -708,6 +701,19 @@ async function dashboardFor(object, from) {
   return usable.find((c) => c.accepts && wanted && c.accepts.endsWith(short(wanted)))
     || usable.find((c) => !c.accepts)
     || null;
+}
+
+/** The search box: it filters the objects in the collection, nothing more. */
+function searchBox() {
+  const input = el("input", { type: "text", placeholder: "Search these resources…", value: searchText });
+  input.addEventListener("input", () => {
+    searchText = input.value.trim().toLowerCase();
+    const collection = currentPages.find((p) => p.panels.some((x) => x.kind === "MembersView"));
+    if (searchText && collection && collection.title !== currentPage.title) openPage(collection.title);
+  });
+  return el("div", { class: "ask" }, input,
+    el("span", { class: "muted" },
+      "Searches the titles, descriptions and topics of the objects in this collection."));
 }
 
 /** What to show for an object that describes no pages of its own. */
@@ -876,7 +882,13 @@ function openPage(title) {
 }
 
 async function drawPage(page, object) {
-  currentPage = page;
+  // A page with a hero shows its search box inside the hero, at the top, rather than as a
+  // panel of its own further down.
+  const hasHero = page.panels.some((panel) => panel.kind === "HeroView");
+  const wantsSearch = page.panels.some((panel) => panel.kind === "AskView");
+  const panels = hasHero ? page.panels.filter((panel) => panel.kind !== "AskView") : page.panels;
+  currentPage = { ...page, panels, searchInHero: hasHero && wantsSearch };
+  page = currentPage;
   const body = document.getElementById("page");
   body.replaceChildren(el("h2", { class: "pagetitle" }, page.title));
   await Promise.all(page.panels.map((panel) => renderPanel(panel, object, body)));

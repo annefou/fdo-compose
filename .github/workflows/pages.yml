@@ -1,8 +1,7 @@
 name: Publish the viewer
 
-# The viewer is a static page that reads the objects from ROHub in the browser,
-# so publishing means copying web/ to GitHub Pages: there is nothing to build,
-# and a change made to an object in ROHub shows on the next reload.
+# The viewer is static: publishing copies web/ to the gh-pages branch, which GitHub Pages
+# serves. This avoids the Pages deployment API, which timed out repeatedly on 5 Nov 2026.
 
 on:
   push:
@@ -10,24 +9,28 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Copy web/ to the gh-pages branch
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf /tmp/site && cp -r web /tmp/site
+          touch /tmp/site/.nojekyll
+          git checkout --orphan gh-pages
+          git rm -rf --cached . >/dev/null
+          find . -maxdepth 1 ! -name . ! -name .git -exec rm -rf {} +
+          cp -r /tmp/site/. .
+          git add -A
+          git commit -m "Publish ${GITHUB_SHA::7}"
+          git push --force origin gh-pages
