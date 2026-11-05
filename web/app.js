@@ -310,7 +310,6 @@ const TYPE_LABELS = {
   GeospatialDataset: "Datasets",
   Dashboard: "Dashboards",
   ResearchObject: "Research objects",
-  Dataset: "Datasets",
 };
 
 const KIND_ICONS = {
@@ -334,8 +333,10 @@ function kindIcon(object) {
  * so the order of the list says nothing; and an object that carries data a map can draw is a
  * dataset whatever else it calls itself.
  */
+// "Dataset" is not in this list on purpose: the root of every RO-Crate is typed Dataset,
+// which says how the crate is structured, not what the object is.
 const TYPE_PRIORITY = [
-  "GeospatialDataset", "Dataset", "BibliographyResearchObject", "BibliographyCentricResearchObject",
+  "GeospatialDataset", "BibliographyResearchObject", "BibliographyCentricResearchObject",
   "Publication", "ExecutableResearchObject", "Dashboard", "ResearchObject",
 ];
 
