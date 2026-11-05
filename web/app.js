@@ -170,18 +170,37 @@ async function crateOf(pid) {
   return { pid, root, graph };
 }
 
-/** The resources of an object, with the terms a dashboard cares about. */
+/**
+ * The resources of an object. ROHub puts files inside folders, which are themselves parts
+ * of the crate, so this walks hasPart and keeps the leaves: the folders are the structure,
+ * the files are what a dashboard can show.
+ */
 function resources({ root, graph }) {
-  const parts = new Set(term(root, SCHEMA + "hasPart"));
-  return graph
-    .filter((e) => parts.has(e["@id"]) && !asList(e["@type"]).includes("Dataset"))
-    .map((e) => ({
-      id: e["@id"],
-      name: e.name || e["@id"],
-      url: one(e, SCHEMA + "contentUrl") || e["@id"],
-      mediaType: one(e, SCHEMA + "encodingFormat"),
-      role: one(e, SCHEMA + "additionalType"),
-    }));
+  const byId = new Map(graph.map((e) => [e["@id"], e]));
+  const found = [];
+  const seen = new Set();
+
+  const walk = (id, depth) => {
+    if (depth > 4 || seen.has(id)) return;
+    seen.add(id);
+    const entity = byId.get(id);
+    if (!entity) return;
+    const children = term(entity, SCHEMA + "hasPart");
+    if (children.length) {
+      children.forEach((child) => walk(child, depth + 1));
+      return;                       // a folder is structure, not a resource to show
+    }
+    found.push({
+      id,
+      name: entity.name || id,
+      url: one(entity, SCHEMA + "contentUrl") || id,
+      mediaType: one(entity, SCHEMA + "encodingFormat"),
+      role: one(entity, SCHEMA + "additionalType"),
+    });
+  };
+
+  term(root, SCHEMA + "hasPart").forEach((id) => walk(id, 0));
+  return found;
 }
 
 /** What the object says it is, and what it shows: the dashboard's own statements. */
