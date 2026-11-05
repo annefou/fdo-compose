@@ -1,0 +1,51 @@
+id: cca-dashboard-0.1
+status: draft
+source: >
+  Draft dashboard additions discussed for the FAIR2Adapt CCA RO-Crate profile
+  (FDOs alignment with CCA RO-Crate profile, AF proposal, September 2026) as they can be
+  written in ROHub today: a ROHub annotation is a flat property/value pair on the Research
+  Object or one of its resources, so a panel cannot be an entity with its own fields and is
+  written as numbered predicates. Read with fdo-consume.
+selects:
+  - https://w3id.org/ro/terms/cca/dashboard-profile/0.1
+identity: identifier
+fields:
+  title: {iri: "https://schema.org/name", level: must}
+  description: {iri: "https://schema.org/description", level: must}
+  licence: {iri: "https://schema.org/license", level: should}
+  date: {iri: "https://schema.org/datePublished", level: should}
+  identifier: {iri: "https://schema.org/identifier", level: may}
+  profile: {iri: "http://purl.org/dc/terms/conformsTo", level: should}
+  author: {iri: ["https://schema.org/author", "https://schema.org/name"], level: may, many: true}
+
+  # What this object is, and what it renders
+  type: {iri: "https://schema.org/additionalType", level: should, many: true}
+  accepts: {iri: "https://w3id.org/ro/terms/cca/accepts", level: should}
+  shows: {iri: "https://schema.org/object", level: should}
+
+  # The panels, in order. Numbered because an annotation cannot carry a nested entity.
+  panel1: {iri: "https://w3id.org/ro/terms/cca/panel1", level: may}
+  panel1_renderer: {iri: "https://w3id.org/ro/terms/cca/panel1Renderer", level: may}
+  panel1_colormap: {iri: "https://w3id.org/ro/terms/cca/panel1Colormap", level: may}
+  panel2: {iri: "https://w3id.org/ro/terms/cca/panel2", level: may}
+  panel2_renderer: {iri: "https://w3id.org/ro/terms/cca/panel2Renderer", level: may}
+  panel3: {iri: "https://w3id.org/ro/terms/cca/panel3", level: may}
+  panel3_renderer: {iri: "https://w3id.org/ro/terms/cca/panel3Renderer", level: may}
+
+  # Style. Colours carry no '#': ROHub reads a leading hash as a relative IRI.
+  primary_color: {iri: "https://w3id.org/ro/terms/cca/primaryColorHex", level: may}
+  accent_color: {iri: "https://w3id.org/ro/terms/cca/accentColorHex", level: may}
+
+  # Dataset side
+  spatial_structure: {iri: "https://w3id.org/ro/terms/cca/spatialStructure", level: may}
+entities:
+  File:
+    via: "https://schema.org/hasPart"
+    type: "https://schema.org/MediaObject"
+    role: resource
+    level: may
+    fields:
+      url: {iri: "https://schema.org/contentUrl", level: may}
+      media_type: {iri: "https://schema.org/encodingFormat", level: should}
+      conforms_to: {iri: "http://purl.org/dc/terms/conformsTo", level: may}
+      spatial_structure: {iri: "https://w3id.org/ro/terms/cca/spatialStructure", level: may}

@@ -1,0 +1,58 @@
+{% extends "base.html.j2" %}
+{% block title %}{{ d.name }} — dashboard{% endblock %}
+{% block content %}
+<h1>{{ d.dataset.name if d.dataset else d.name }}</h1>
+<p class="lead">
+  {% if d.dataset %}Rendered from <a href="{{ d.pid }}">this dashboard FDO</a>, showing
+  <a href="{{ d.dataset.pid }}">this dataset FDO</a>. The panels below, their order and their settings are what the
+  dashboard object says.{% else %}This object is a template: it has nothing to show until a fork names a dataset.{% endif %}
+</p>
+
+{% for p in d.panels %}
+<section class="card panel">
+  <h2>{{ p.label }}</h2>
+
+  {% if p.kind.endswith("MapView") %}
+    {% if d.dataset and d.dataset.store_url %}
+      <iframe class="map" title="Map of {{ d.dataset.name }}" loading="lazy"
+              src="https://f2a.plan4all.eu/#{{ d.dataset.store_url }}"></iframe>
+      <p class="muted">Renderer asked for: <code>{{ p.renderer|short }}</code>{% for k, v in p.settings.items() %} ·
+        <code>{{ k }} = {{ v }}</code>{% endfor %} · data store:
+        <a href="{{ d.dataset.store_url }}">{{ d.dataset.store_url|basename }}</a>
+        (a Zarr store: its root is not a web page, the map reads it chunk by chunk) ·
+        <a href="https://f2a.plan4all.eu/#{{ d.dataset.store_url }}">open the map in its own tab</a></p>
+    {% else %}
+      <p class="muted">No data store in the bound object.</p>
+    {% endif %}
+
+  {% elif p.kind.endswith("VariablesView") %}
+    {% if d.dataset and d.dataset.bands %}
+      <ul class="cols">{% for b in d.dataset.bands %}<li><code>{{ b }}</code></li>{% endfor %}</ul>
+      <p class="muted">Read from the STAC item the dataset FDO points at. These are band names, not yet I-ADOPT
+      variables: the dataset carries no I-ADOPT decomposition, so a view can only bind by name here.</p>
+    {% else %}
+      <p class="muted">The bound object declares no variables a reader can use.</p>
+    {% endif %}
+
+  {% elif p.kind.endswith("ClaimsView") %}
+    <p class="muted">No claims are recorded for this dataset: its crate links no nanopublication. The panel stays in
+    the composition, and fills as soon as claims about this PID are published.</p>
+
+  {% else %}
+    <p class="muted">No renderer in this build for <code>{{ p.kind }}</code>.</p>
+  {% endif %}
+</section>
+{% endfor %}
+
+{% if d.dataset %}
+<section class="card">
+  <h2>Where this came from</h2>
+  <dl class="meta">
+    {% if d.dataset.stac_url %}<dt>STAC item</dt><dd><a href="{{ d.dataset.stac_url }}">{{ d.dataset.stac_url }}</a></dd>{% endif %}
+    {% if d.dataset.lineage %}<dt>Processing</dt><dd>{{ d.dataset.lineage }}</dd>{% endif %}
+    <dt>Dataset FDO</dt><dd><a href="{{ d.dataset.pid }}">{{ d.dataset.pid }}</a></dd>
+    <dt>Dashboard FDO</dt><dd><a href="{{ d.pid }}">{{ d.pid }}</a></dd>
+  </dl>
+</section>
+{% endif %}
+{% endblock %}
