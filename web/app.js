@@ -92,12 +92,31 @@ function objectOf(pid) {
   return crates.get(pid);
 }
 
+/** ROHub takes several seconds to generate a crate, so one visit reads each object once. */
+function remember(pid, crate) {
+  try {
+    sessionStorage.setItem("crate:" + pid, JSON.stringify({ at: Date.now(), crate }));
+  } catch { /* a full or disabled store simply means no memory */ }
+}
+
+function remembered(pid) {
+  try {
+    const kept = JSON.parse(sessionStorage.getItem("crate:" + pid) || "null");
+    if (kept && Date.now() - kept.at < 30 * 60 * 1000) return kept.crate;
+  } catch { /* unreadable store */ }
+  return null;
+}
+
 async function crateOf(pid) {
   const match = RO_PID.exec(pid.trim());
   if (!match) throw new Error(`not a ROHub PID: ${pid}`);
-  const response = await fetch(CRATE(match[1]));
-  if (!response.ok) throw new Error(`ROHub returned ${response.status} for ${pid}`);
-  const crate = await response.json();
+  let crate = remembered(pid);
+  if (!crate) {
+    const response = await fetch(CRATE(match[1]));
+    if (!response.ok) throw new Error(`ROHub returned ${response.status} for ${pid}`);
+    crate = await response.json();
+    remember(pid, crate);
+  }
   const graph = crate["@graph"] || [];
   const root = graph.find((e) => e["@id"] === "./") || {};
   return { pid, root, graph };
@@ -225,6 +244,21 @@ const TYPE_LABELS = {
   Dashboard: "Dashboards",
   ResearchObject: "Research objects",
 };
+
+const KIND_ICONS = {
+  Publications: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5l3 3v10h-8z" fill="none" stroke="currentColor"/><path d="M9 1.5v3h3M5.5 8h5M5.5 10.5h5" fill="none" stroke="currentColor"/></svg>',
+  Datasets: '<svg viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="4" rx="5" ry="2" fill="none" stroke="currentColor"/><path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2" fill="none" stroke="currentColor"/></svg>',
+  Workflows: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="5" height="3.5" fill="none" stroke="currentColor"/><rect x="9.5" y="9.5" width="5" height="3.5" fill="none" stroke="currentColor"/><path d="M6.5 4.3h4c.8 0 1.5.7 1.5 1.5v3.7" fill="none" stroke="currentColor"/></svg>',
+  Dashboards: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="9" fill="none" stroke="currentColor"/><path d="M6 14h4M8 11.5V14" fill="none" stroke="currentColor"/></svg>',
+};
+
+function kindIcon(object) {
+  const kind = kindOf(object);
+  const svg = KIND_ICONS[kind];
+  return svg
+    ? el("span", { class: "kindicon", title: kind.replace(/s$/, ""), html: svg })
+    : null;
+}
 
 function kindOf(object) {
   const names = [...object.type, ...(object.roTypes || [])].map((t) => short(String(t).split("#").pop()));
@@ -399,7 +433,7 @@ async function renderPanel(panel, object, into) {
         openPage(currentPage.title);
       });
       section.append(el("ul", { class: "members" }, keep.map((m) =>
-        el("li", {}, objectLink(m.pid, m.name, object.pid),
+        el("li", {}, kindIcon(m), objectLink(m.pid, m.name, object.pid),
           m.description ? el("div", { class: "muted" }, m.description.slice(0, 180)) : null))));
       return;
     }
@@ -408,7 +442,7 @@ async function renderPanel(panel, object, into) {
       const item = el("li", {}, objectLink(member, member, object.pid));
       list.append(item);
       objectOf(member).then((described) => {
-        item.replaceChildren(objectLink(member, described.name, object.pid),
+        item.replaceChildren(kindIcon(described), objectLink(member, described.name, object.pid),
           described.description
             ? el("div", { class: "muted" }, described.description.slice(0, 180))
             : null);
@@ -583,7 +617,7 @@ async function dashboardFor(object, from) {
     if (own?.pages.length) return own;
   }
   if (!from) return null;
-  const parent = await objectOf(from).catch(() => null);
+  const parent = await objectOf(from).catch(() => null);   // in flight since show() started
   const candidates = await Promise.all((parent?.memberDashboards || [])
     .map((pid) => objectOf(pid).catch(() => null)));
   const usable = candidates.filter((c) => c?.pages.length);
@@ -649,6 +683,10 @@ async function show(pid) {
   const nav = document.getElementById("pages");
   main.replaceChildren(el("p", { class: "muted" }, "Reading " + pid + " from ROHub…"));
   nav.replaceChildren();
+
+  // The collection this object was opened from is fetched at the same time, not after it.
+  const fromEarly = wantedFrom();
+  const parentPromise = fromEarly ? objectOf(fromEarly).catch(() => null) : null;
 
   let object;
   try {
