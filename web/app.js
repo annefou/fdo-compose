@@ -417,7 +417,8 @@ const objectLink = (pid, text, from) => el("a", {
 }, text || pid);
 
 async function renderPanel(panel, object, into) {
-  const label = PANEL_LABELS[panel.kind] ?? panel.kind;
+  let label = PANEL_LABELS[panel.kind] ?? panel.kind;
+  if (label && currentPage && label.toLowerCase() === currentPage.title.toLowerCase()) label = "";
   const section = card(label);
   into.append(section);
   if (object.datasetPromise && !object.dataset) {
@@ -761,7 +762,15 @@ async function show(pid) {
 
   // The collection this object was opened from is fetched at the same time, not after it.
   const fromEarly = wantedFrom();
-  const parentPromise = fromEarly ? objectOf(fromEarly).catch(() => null) : null;
+  const parentPromise = fromEarly
+    ? objectOf(fromEarly)
+        .then((parent) => {
+          // warm the compositions it offers, so choosing one costs no extra round trip
+          (parent?.memberDashboards || []).forEach((pid) => objectOf(pid).catch(() => null));
+          return parent;
+        })
+        .catch(() => null)
+    : null;
 
   let object;
   try {
