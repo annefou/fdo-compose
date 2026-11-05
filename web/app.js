@@ -319,7 +319,25 @@ async function renderPanel(panel, object, into) {
   const note = (text) => section.append(el("p", { class: "muted" }, text));
 
   if (panel.kind === "MapView") {
-    const dataset = object.dataset || object;
+    // A dashboard bound to one dataset maps that one; a collection maps the datasets it
+    // holds, and lets the reader choose between them.
+    let dataset = object.dataset || object;
+    if (!dataset.storeUrl && !RO_PID.test(dataset.pid || "")) dataset = object;
+    if (!object.dataset && object.members.length) {
+      const members = await readMembers(object);
+      const mappable = members.filter((m) => m.storeUrl || m.iadopt?.length);
+      if (!mappable.length) return note("None of the objects in this collection carries data a map can draw.");
+      dataset = mappable[mapChoice] || mappable[0];
+      if (mappable.length > 1) {
+        const chooser = el("select", { class: "chooser" },
+          mappable.map((m, i) => el("option", { value: String(i), ...(i === mapChoice ? { selected: "selected" } : {}) }, m.name)));
+        chooser.addEventListener("change", () => {
+          mapChoice = Number(chooser.value);
+          openPage(currentPage.title);
+        });
+        section.append(el("p", {}, el("label", {}, "Dataset: "), chooser));
+      }
+    }
     // The viewer opens a Research Object PID directly, which is better than handing it a
     // store URL: it reads the crate itself, so the variables keep their names and units.
     const target = RO_PID.test(dataset.pid) ? dataset.pid : dataset.storeUrl;
@@ -663,6 +681,7 @@ async function show(pid) {
 
 let activeTopic = null;
 let searchText = "";
+let mapChoice = 0;
 let currentObject = null;
 let currentPages = [];
 let currentPage = null;
