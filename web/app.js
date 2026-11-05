@@ -65,6 +65,54 @@ const el = (tag, attrs = {}, ...children) => {
 };
 
 const short = (iri) => (iri || "").replace(/\/$/, "").split("/").pop();
+
+const escapeHtml = (text) => String(text)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/**
+ * ROHub descriptions are written in Markdown. This renders the part of it that appears
+ * there - headings, emphasis, code, links and lists - after escaping the text, so nothing
+ * a record states can inject markup.
+ */
+function markdown(text) {
+  const inline = (line) => escapeHtml(line)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+
+  const html = [];
+  let list = false;
+  const closeList = () => { if (list) { html.push("</ul>"); list = false; } };
+
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) { closeList(); continue; }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      closeList();
+      const level = Math.min(heading[1].length + 2, 6);
+      html.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+      continue;
+    }
+    const item = /^[-*]\s+(.*)$/.exec(line);
+    if (item) {
+      if (!list) { html.push("<ul>"); list = true; }
+      html.push(`<li>${inline(item[1])}</li>`);
+      continue;
+    }
+    closeList();
+    html.push(`<p>${inline(line)}</p>`);
+  }
+  closeList();
+  return html.join("");
+}
+
+/** The same text with the Markdown taken out, for a one-line summary. */
+const plain = (text) => String(text || "")
+  .replace(/^#{1,6}\s+/gm, "").replace(/[*_`]/g, "")
+  .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\s+/g, " ").trim();
 const idOf = (value) => (value && typeof value === "object" ? value["@id"] : value);
 const asList = (value) => (value === undefined ? [] : Array.isArray(value) ? value : [value]);
 
@@ -452,7 +500,7 @@ async function renderPanel(panel, object, into) {
         item.replaceChildren(...[
           kindIcon(described),
           objectLink(member, described.name, object.pid),
-          described.description ? el("div", { class: "muted" }, described.description.slice(0, 180)) : null,
+          described.description ? el("div", { class: "muted" }, plain(described.description).slice(0, 180) + "…") : null,
         ].filter(Boolean));
       }).catch(() => {});
     }
@@ -476,7 +524,7 @@ async function renderPanel(panel, object, into) {
     // The words are the object's own: its title and its description. Nothing here is
     // written in an annotation, and nothing is written in this viewer.
     section.append(el("h2", { class: "hero-title" }, object.name));
-    if (object.description) section.append(el("p", { class: "hero-lead" }, object.description));
+    if (object.description) section.append(el("p", { class: "hero-lead" }, plain(object.description)));
   } else if (panel.kind === "NoticeView") {
     // The text of a notice is a file in the object (notice.md), so a curator can change it.
     const file = fileFor(object.brand || object, "Notice", /^notice\.(md|txt)$/i);
@@ -536,7 +584,7 @@ async function renderPanel(panel, object, into) {
   } else if (panel.kind === "TextView") {
     const text = panel.settings.text || object.description;
     if (!text) return note("This object states no description.");
-    section.append(el("p", { class: "prose" }, text));
+    section.append(el("div", { class: "prose", html: markdown(text) }));
   } else if (panel.kind === "StatsView") {
     const dataset = object.dataset || object;
     const available = {
@@ -736,7 +784,7 @@ async function show(pid) {
   main.replaceChildren();
   const pagesSay = (object.pages.length ? object.pages : []).some((page) =>
     page.panels.some((panel) => panel.kind === "TextView"));
-  if (object.description && !pagesSay) main.append(el("p", { class: "lead" }, object.description));
+  if (object.description && !pagesSay) main.append(el("div", { class: "lead", html: markdown(object.description) }));
 
   // A member opened from a collection is shown the way that collection says its members
   // are shown; failing that, the way this viewer shows an object of its kind.
