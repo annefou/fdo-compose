@@ -24,5 +24,14 @@
   <code>cca-dashboard-0.1</code>. Nothing on these pages is configured in the code: every value comes from annotations
   on the Research Objects in ROHub.
 </footer>
+<script>
+// The Science Live embed reports its height; let each nanopublication iframe grow to fit.
+window.addEventListener("message", function (event) {
+  if (!event.data || event.data.type !== "nanopub-embed-resize") return;
+  document.querySelectorAll("figure.np iframe").forEach(function (frame) {
+    if (frame.contentWindow === event.source) frame.style.height = event.data.height + "px";
+  });
+});
+</script>
 </body>
 </html>

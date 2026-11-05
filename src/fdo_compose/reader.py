@@ -50,6 +50,11 @@ def read_dashboard(pid: str, folder: Path, refresh: bool = False) -> dict:
     result = consume(pid, "dashboard-site-v1", recorded_dir=str(folder), contracts=str(CONTRACTS))
     binding = result.binding or {}
     fields = dict(binding.get("object", {}).get("fields", {}))
+    fields["_parts"] = [
+        {"url": e.get("fields", {}).get("url"), "name": e.get("fields", {}).get("name"),
+         "role": e.get("fields", {}).get("role")}
+        for e in binding.get("entities", []) if e.get("type") == "File"
+    ]
     fields["_usable"] = result.is_usable
     fields["_statuses"] = {k: (v.get("status") if isinstance(v, dict) else v)
                            for k, v in (result.statuses or {}).items()}

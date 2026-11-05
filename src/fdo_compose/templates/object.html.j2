@@ -38,8 +38,9 @@
 <section class="card">
   <h2>What it is bound to</h2>
   {% if d.dataset %}
-  <p>This dashboard was created by forking the template and adding one annotation,
-     <code>schema:object</code>, naming the dataset it shows:</p>
+  <p>This dashboard was created by forking the template and adding the dataset as a <strong>resource</strong> of the
+     fork, so that it is visible in ROHub and can be replaced there; the same binding is also stated on the root as
+     <code>schema:object</code> for readers that only look at the crate.</p>
   <dl class="meta">
     <dt>Dataset FDO</dt><dd><a href="{{ d.dataset.pid }}">{{ d.dataset.pid }}</a></dd>
     <dt>Title</dt><dd>{{ d.dataset.name }}</dd>
@@ -50,7 +51,9 @@
       {% endfor %}
     </dd>
   </dl>
-  <p class="muted">Changing that one annotation in a fork points the same dashboard at another dataset; changing
+  <p class="muted">To show another dataset, replace that resource in ROHub with another Research Object PID: a resource
+  marked <code>cca:InputDataset</code> wins, and failing that any resource that is itself a Research Object counts as
+  the input, so the swap works from ROHub's interface alone. Changing
   <code>cca:panel1Colormap</code> or <code>cca:primaryColorHex</code> changes how it looks. No code is touched either way.</p>
   {% else %}
   <p>Nothing yet: this is the <strong>template</strong>. It says how to display a

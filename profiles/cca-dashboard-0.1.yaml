@@ -47,5 +47,6 @@ entities:
     fields:
       url: {iri: "https://schema.org/contentUrl", level: may}
       media_type: {iri: "https://schema.org/encodingFormat", level: should}
+      role: {iri: "https://schema.org/additionalType", level: may}
       conforms_to: {iri: "http://purl.org/dc/terms/conformsTo", level: may}
       spatial_structure: {iri: "https://w3id.org/ro/terms/cca/spatialStructure", level: may}

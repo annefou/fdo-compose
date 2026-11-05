@@ -36,13 +36,15 @@
 
   {% elif p.kind.endswith("ClaimsView") %}
     {% if d.dataset and d.dataset.claims %}
-      <ul class="claims">
-        {% for c in d.dataset.claims %}
-        <li>{{ c.label }}<br><a class="muted" href="{{ c.url }}">{{ c.url }}</a></li>
-        {% endfor %}
-      </ul>
-      <p class="muted">Each claim is a nanopublication the dataset FDO links to; the text is the label the
-      nanopublication gives itself, read from its own record, not copied into the crate.</p>
+      {% for c in d.dataset.claims %}
+      <figure class="np">
+        <iframe title="{{ c.label }}"
+                src="https://platform.sciencelive4all.org/embed/view?uri={{ c.url | urlencode }}"></iframe>
+        <figcaption><a href="{{ c.url }}">{{ c.url }}</a></figcaption>
+      </figure>
+      {% endfor %}
+      <p class="muted">Each claim is a nanopublication the dataset FDO links to, shown by the Science Live embed, which
+      renders it from the nanopublication itself. Nothing of the claim is copied into the crate: the crate only links it.</p>
     {% else %}
       <p class="muted">No claims are recorded for this dataset: its crate links no nanopublication. The panel stays in
       the composition, and fills as soon as claims about this PID are published.</p>

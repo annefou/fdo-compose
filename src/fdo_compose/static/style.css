@@ -45,3 +45,8 @@ footer { border-top: 1px solid var(--line); padding: 1.2rem; color: var(--muted)
 ul.claims { margin: 0; padding-left: 1.1rem; }
 ul.claims li { margin-bottom: .7rem; }
 ul.claims a { font-size: .82rem; }
+
+figure.np { margin: 0 0 1rem; }
+figure.np iframe { width: 100%; min-height: 11rem; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+figure.np figcaption { font-size: .78rem; margin-top: .25rem; }
+figure.np figcaption a { color: var(--muted); }

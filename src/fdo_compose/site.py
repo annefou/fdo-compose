@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -87,6 +88,27 @@ class Dashboard:
         return f"https://api.rohub.org/api/ros/{self.pid.rsplit('/', 1)[-1]}/crate/download/"
 
 
+RO_PID = re.compile(r"^https://w3id\.org/ro-id/[0-9a-f-]{36}$")
+
+
+def _input_resource(fields: dict) -> str | None:
+    """The dataset a dashboard is bound to, as a resource of the dashboard itself.
+
+    A resource marked ``cca:InputDataset`` wins. Failing that, any resource that is
+    another Research Object counts as the input: ROHub's interface lets someone add or
+    replace a resource but not annotate it, so a dashboard must still work when the
+    dataset was swapped there by hand.
+    """
+    parts = fields.get("_parts", [])
+    for part in parts:
+        if (part.get("role") or "").endswith("InputDataset"):
+            return part.get("url")
+    for part in parts:
+        if RO_PID.match(part.get("url") or ""):
+            return part.get("url")
+    return None
+
+
 def build(pid: str, cache: Path, refresh: bool = False) -> Dashboard:
     fields = read_dashboard(pid, cache, refresh)
 
@@ -100,7 +122,7 @@ def build(pid: str, cache: Path, refresh: bool = False) -> Dashboard:
         panels.append(Panel(n, kind, fields.get(f"panel{n}_renderer"), settings))
 
     dataset = None
-    shown = fields.get("shows")
+    shown = _input_resource(fields) or fields.get("shows")
     if shown:
         described = read_object(shown, cache, refresh)
         dataset = Dataset(

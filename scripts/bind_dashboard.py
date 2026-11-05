@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 
 import rohub
-from _rohub import CCA, SCHEMA, annotate, login, pid
+from _rohub import CCA, SCHEMA, annotate, login, pid, retry
 
 
 def main() -> None:
@@ -28,11 +28,18 @@ def main() -> None:
     fork_id = fork if isinstance(fork, str) else fork.identifier   # ros_fork returns the new identifier
     print("Dashboard instance:", pid(fork_id))
 
+    # The input is a resource of the dashboard, so that it is visible in ROHub's own interface
+    # and a user can replace it there; the annotation on the root says the same thing for machines.
+    resource = retry(rohub.ros_add_external_resource, fork_id, res_type="Dataset",
+                     input_url=dataset, title="Input dataset (the FDO this dashboard shows)")
+    annotate(fork_id, [(SCHEMA + "additionalType", CCA + "InputDataset")], resource=resource.identifier)
     annotate(fork_id, [(SCHEMA + "object", dataset)])
+    print("  input resource:", resource.identifier)
     print("  shows:", dataset)
-    print("\nTo customise, annotate this fork further, for example:")
-    print(f"  {CCA}colormap = viridis        (on the map panel resource)")
-    print(f"  {CCA}primaryColorHex = be2e78  (on the fork itself; no '#', ROHub reads it as an IRI)")
+    print("\nTo show another dataset: replace the input resource in ROHub with another dataset PID.")
+    print("To restyle: annotate the fork with, for example,")
+    print(f"  {CCA}panel1Colormap = viridis")
+    print(f"  {CCA}primaryColorHex = be2e78   (no '#', ROHub reads a leading hash as an IRI)")
 
 
 if __name__ == "__main__":
