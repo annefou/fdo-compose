@@ -140,6 +140,13 @@ function readObject(fetched) {
     }))
     .filter((v) => v.label);
 
+  const subjects = fetched.graph
+    .filter((e) => {
+      const types = asList(e["@type"]).map(String);
+      return types.some((t) => t.endsWith("DefinedTerm") || t.endsWith("#FieldOfResearch"));
+    })
+    .map((e) => e.name).filter(Boolean);
+
   const keywords = [...asList(root.keywords), ...asList(root["https://schema.org/keywords"])]
     .flatMap((k) => String(idOf(k) || "").split(/\s*[,;]\s*/))
     .map((k) => k.trim()).filter((k) => k && k.length < 40);
@@ -147,7 +154,7 @@ function readObject(fetched) {
   return {
     pid,
     iadopt,
-    keywords: [...new Set(keywords)],
+    keywords: [...new Set([...keywords, ...subjects])],
     roTypes: asList(root["@type"]).map((t) => String(t)),
     name: root.name || pid,
     description: root.description || "",
@@ -198,14 +205,22 @@ async function readMembers(object) {
   return object.membersRead;
 }
 
+/** The kind of object, by the last part of the type IRI the crate states. */
 const TYPE_LABELS = {
-  "Bibliography-centric Research Object": "Publications",
-  "Executable Research Object": "Workflows",
-  "Basic Research Object": "Research objects",
-  GeospatialDataset: "Datasets",
+  BibliographyResearchObject: "Publications",
+  BibliographyCentricResearchObject: "Publications",
   Publication: "Publications",
+  ExecutableResearchObject: "Workflows",
+  GeospatialDataset: "Datasets",
   Dashboard: "Dashboards",
+  ResearchObject: "Research objects",
 };
+
+function kindOf(object) {
+  const names = [...object.type, ...(object.roTypes || [])].map((t) => short(String(t).split("#").pop()));
+  const match = names.find((n) => TYPE_LABELS[n]);
+  return TYPE_LABELS[match] || "Other objects";
+}
 
 /** The sentence a nanopublication states, with who signed it and when. */
 async function readNanopub(uri) {
@@ -284,7 +299,7 @@ const objectLink = (pid, text, from) => el("a", {
 }, text || pid);
 
 async function renderPanel(panel, object, into) {
-  const label = PANEL_LABELS[panel.kind] || panel.kind;
+  const label = PANEL_LABELS[panel.kind] ?? panel.kind;
   const section = card(label);
   into.append(section);
   if (object.datasetPromise && !object.dataset) {
@@ -426,8 +441,7 @@ async function renderPanel(panel, object, into) {
     const members = await readMembers(object);
     const counts = new Map();
     members.forEach((m) => {
-      const kind = m.type.find((t) => TYPE_LABELS[t]) || m.roTypes?.find((t) => TYPE_LABELS[t]);
-      const label = TYPE_LABELS[kind] || "Other objects";
+      const label = kindOf(m);
       counts.set(label, (counts.get(label) || 0) + 1);
     });
     section.append(el("div", { class: "facets" }, [...counts].map(([label, n]) =>
