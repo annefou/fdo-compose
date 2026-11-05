@@ -333,10 +333,17 @@ function kindOf(object) {
   return TYPE_LABELS[match] || "Other objects";
 }
 
+/**
+ * The record of a nanopublication, wherever a crate points at it. A
+ * w3id.org/sciencelive/np/<id> address serves the platform's web page rather than the
+ * record, so the record is read from w3id.org/np/<id>; both name the same nanopublication.
+ */
+const recordUri = (uri) => uri.replace(/^https:\/\/w3id\.org\/[a-z0-9-]+\/np\//, "https://w3id.org/np/");
+
 /** The sentence a nanopublication states, with who signed it and when. */
 async function readNanopub(uri) {
   try {
-    const trig = await fetch(uri, { headers: { Accept: "application/trig" } }).then((r) => r.text());
+    const trig = await fetch(recordUri(uri), { headers: { Accept: "application/trig" } }).then((r) => r.text());
     const label = /rdfs:label\s+"((?:[^"\\]|\\.)*)"/.exec(trig);
     const name = /foaf:name\s+"((?:[^"\\]|\\.)*)"/.exec(trig);
     const date = /dct:created\s+"([0-9-]{10})/.exec(trig);
