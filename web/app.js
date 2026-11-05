@@ -285,6 +285,13 @@ async function readNanopub(uri) {
  * annotations on the object. The file exists because ROHub lets a user add or replace
  * a resource in its interface, but not edit an annotation.
  */
+/** Does this object carry a look of its own? */
+function hasBrand(object) {
+  return Boolean(fileFor(object, "Theme", /^theme\.json$/i)
+    || fileFor(object, "Logo", /^logo\.(png|jpe?g|svg|webp)$/i)
+    || fileFor(object, "BackgroundImage", /^background\.(png|jpe?g|webp)$/i));
+}
+
 function fileFor(object, role, pattern) {
   return object.parts.find((p) => (p.role || "").endsWith(role) || pattern.test(p.name || ""));
 }
@@ -461,7 +468,7 @@ async function renderPanel(panel, object, into) {
     ]));
   } else if (panel.kind === "HeroView") {
     section.classList.add("hero");
-    const image = fileFor(object, "BackgroundImage", /^background\.(png|jpe?g|webp)$/i);
+    const image = fileFor(object.brand || object, "BackgroundImage", /^background\.(png|jpe?g|webp)$/i);
     if (image) {
       section.style.backgroundImage =
         `linear-gradient(to right, rgba(255,255,255,.92) 0%, rgba(255,255,255,.75) 45%, rgba(255,255,255,.25) 100%), url("${image.url}")`;
@@ -472,7 +479,7 @@ async function renderPanel(panel, object, into) {
     if (object.description) section.append(el("p", { class: "hero-lead" }, object.description));
   } else if (panel.kind === "NoticeView") {
     // The text of a notice is a file in the object (notice.md), so a curator can change it.
-    const file = fileFor(object, "Notice", /^notice\.(md|txt)$/i);
+    const file = fileFor(object.brand || object, "Notice", /^notice\.(md|txt)$/i);
     if (!file) return section.remove();
     const text = await fetch(file.url).then((r) => r.text()).catch(() => "");
     if (!text.trim()) return section.remove();
@@ -696,8 +703,13 @@ async function show(pid) {
     main.replaceChildren(card("This object could not be read", el("p", {}, String(error.message))));
     return;
   }
-  const theme = await readTheme(object);
-  applyTheme(theme, object);
+  // A member opened from a collection stays inside that collection's site: it keeps the
+  // hub's look unless it carries a brand of its own.
+  const parent = parentPromise ? await parentPromise : null;
+  const brand = hasBrand(object) ? object : (parent && hasBrand(parent) ? parent : object);
+  object.brand = brand;
+  const theme = await readTheme(brand);
+  applyTheme(theme, brand);
   if (theme.colormap) object.themeColormap = theme.colormap;
   document.getElementById("title").textContent = object.name;
   document.getElementById("source").replaceChildren(link(object.pid, "source object in ROHub"));
@@ -747,8 +759,8 @@ async function show(pid) {
   });
   drawPage(pages[0], object);
 
-  readFooter(object).then((lines) => { object.footerLines = lines; renderFooter(object); });
-  renderFooter(object);
+  readFooter(brand).then((lines) => { brand.footerLines = lines; renderFooter(brand); });
+  renderFooter(brand);
 
   const details = el("details", { class: "howto" }, el("summary", {}, "How this page is described"));
   details.append(el("p", { class: "muted" },
