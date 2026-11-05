@@ -82,3 +82,34 @@ iframe.service { width: 100%; height: 26rem; border: 1px solid var(--line); bord
 .trail { margin-top: .5rem; }
 .trail a { color: #cfe6f0; text-decoration: none; font-size: .85rem; }
 .trail a:hover { color: #fff; text-decoration: underline; }
+
+/* hero, facets, partners: the furniture a hub needs */
+.card.hero { background-size: cover; background-position: center right; padding: 2.4rem 2rem; border-left-width: 0;
+             border-radius: 8px; }
+.hero-title { font-size: 2.1rem; line-height: 1.15; margin: 0 0 .6rem; color: var(--ink); max-width: 30ch; }
+.hero-title .hl { color: var(--primary); }
+.hero-lead { max-width: 46ch; margin: 0; color: var(--ink); }
+.ask { margin-top: 1.2rem; max-width: 36rem; }
+.ask input { width: 100%; padding: .8rem 1rem; border: 2px solid var(--primary); border-radius: 999px;
+             font: inherit; background: rgba(255,255,255,.95); }
+.ask .muted { display: block; margin-top: .35rem; font-size: .76rem; }
+
+.card.notice { border-left-color: #e8a838; background: #fdf7ec; padding: .7rem 1.1rem; }
+.card.notice p { margin: 0; font-size: .88rem; }
+
+.facets { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .8rem; }
+.facet { display: flex; flex-direction: column; gap: .2rem; align-items: flex-start; text-align: left;
+         background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem;
+         font: inherit; color: inherit; cursor: pointer; }
+.facet:hover { border-color: var(--primary); }
+.facet.count { flex-direction: row; align-items: baseline; gap: .6rem; cursor: default; }
+.filter { font-size: .9rem; }
+.clear { border: 0; background: none; color: var(--primary); cursor: pointer; font: inherit; text-decoration: underline; }
+
+#footer-extra { display: flex; flex-wrap: wrap; gap: 1.6rem 2.4rem; align-items: center; justify-content: space-between;
+                padding-bottom: 1rem; }
+.trust { display: flex; flex-wrap: wrap; gap: 1.4rem 2rem; }
+.trust-item { display: flex; flex-direction: column; font-size: .84rem; max-width: 20rem; }
+.partners { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.partners .logos { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.partners img { height: 2.2rem; width: auto; }

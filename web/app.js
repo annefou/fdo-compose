@@ -31,6 +31,11 @@ function viewerUrl(store, settings = {}) {
 }
 
 const PANEL_LABELS = {
+  HeroView: "",
+  NoticeView: "",
+  TopicsView: "Explore resources by topic",
+  CategoriesView: "Browse our resources",
+  PartnersView: "",
   TextView: "About",
   StatsView: "In numbers",
   LinksView: "Where to go next",
@@ -135,9 +140,15 @@ function readObject(fetched) {
     }))
     .filter((v) => v.label);
 
+  const keywords = [...asList(root.keywords), ...asList(root["https://schema.org/keywords"])]
+    .flatMap((k) => String(idOf(k) || "").split(/\s*[,;]\s*/))
+    .map((k) => k.trim()).filter((k) => k && k.length < 40);
+
   return {
     pid,
     iadopt,
+    keywords: [...new Set(keywords)],
+    roTypes: asList(root["@type"]).map((t) => String(t)),
     name: root.name || pid,
     description: root.description || "",
     licence: idOf(root.license),
@@ -145,6 +156,11 @@ function readObject(fetched) {
     type,
     accepts: short(one(root, CCA + "accepts")),
     colour: one(root, CCA + "primaryColorHex"),
+    footer: [1, 2, 3, 4, 5, 6].map((n) => one(root, `${CCA}footerStatement${n}`)).filter(Boolean),
+    heroTitle: one(root, CCA + "heroTitle"),
+    heroHighlight: one(root, CCA + "heroHighlight"),
+    notice: one(root, CCA + "notice"),
+    ask: one(root, CCA + "ask"),
     members: parts.filter((p) => RO_PID.test(p.url) && p.url !== marked).map((p) => p.url),
     claims: parts.filter((p) => p.url.includes("/np/")).map((p) => p.url),
     stacUrl: parts.find((p) => p.mediaType === "application/geo+json")?.url,
@@ -172,6 +188,24 @@ function panelsOf(root, prefix) {
   }
   return panels;
 }
+
+/** Every member of a collection, read once and kept. */
+async function readMembers(object) {
+  if (!object.membersRead) {
+    object.membersRead = Promise.all(object.members.map((pid) => objectOf(pid).catch(() => null)))
+      .then((list) => list.filter(Boolean));
+  }
+  return object.membersRead;
+}
+
+const TYPE_LABELS = {
+  "Bibliography-centric Research Object": "Publications",
+  "Executable Research Object": "Workflows",
+  "Basic Research Object": "Research objects",
+  GeospatialDataset: "Datasets",
+  Publication: "Publications",
+  Dashboard: "Dashboards",
+};
 
 /** The sentence a nanopublication states, with who signed it and when. */
 async function readNanopub(uri) {
@@ -306,7 +340,21 @@ async function renderPanel(panel, object, into) {
     }
     note("Each claim is a nanopublication the dataset links to; the text is read from the nanopublication itself.");
   } else if (panel.kind === "MembersView") {
-    if (!object.members.length) return note("This object lists no member datasets.");
+    if (!object.members.length) return note("This object lists no members.");
+    if (activeTopic) {
+      const members = await readMembers(object);
+      const keep = members.filter((m) => (m.keywords || []).includes(activeTopic));
+      section.append(el("p", { class: "filter" }, `Topic: ${activeTopic} `,
+        el("button", { class: "clear", type: "button" }, "show all")));
+      section.querySelector(".clear").addEventListener("click", () => {
+        activeTopic = null;
+        openPage(currentPage.title);
+      });
+      section.append(el("ul", { class: "members" }, keep.map((m) =>
+        el("li", {}, objectLink(m.pid, m.name, object.pid),
+          m.description ? el("div", { class: "muted" }, m.description.slice(0, 180)) : null))));
+      return;
+    }
     const list = el("ul", { class: "members" });
     for (const member of object.members) {
       const item = el("li", {}, objectLink(member, member, object.pid));
@@ -328,6 +376,69 @@ async function renderPanel(panel, object, into) {
       ["Resources", el("span", {}, dataset.parts.map((p) => el("div", {}, link(p.url, p.name),
         p.mediaType ? el("span", { class: "muted" }, ` ${p.mediaType}`) : null)))],
     ]));
+  } else if (panel.kind === "HeroView") {
+    section.classList.add("hero");
+    const image = fileFor(object, "BackgroundImage", /^background\.(png|jpe?g|webp)$/i);
+    if (image) {
+      section.style.backgroundImage =
+        `linear-gradient(to right, rgba(255,255,255,.92) 0%, rgba(255,255,255,.75) 45%, rgba(255,255,255,.25) 100%), url("${image.url}")`;
+    }
+    // The crate's own title and description carry the words; annotations add what a crate
+    // cannot say: which part of the heading to highlight, and the invitation in the search box.
+    const heading = panel.settings.heading || object.heroTitle || object.name;
+    const highlight = panel.settings.highlight || object.heroHighlight;
+    const parts = highlight && heading.includes(highlight)
+      ? heading.split(highlight) : null;
+    section.append(parts
+      ? el("h2", { class: "hero-title" }, parts[0], el("span", { class: "hl" }, highlight), parts[1])
+      : el("h2", { class: "hero-title" }, heading));
+    const lead = panel.settings.lead || object.description;
+    if (lead) section.append(el("p", { class: "hero-lead" }, lead));
+    const ask = panel.settings.ask || object.ask;
+    if (ask) {
+      section.append(el("div", { class: "ask" },
+        el("input", { type: "text", placeholder: ask, disabled: "disabled" }),
+        el("span", { class: "muted" }, "no question-answering service is connected to this object yet")));
+    }
+  } else if (panel.kind === "NoticeView") {
+    section.classList.add("notice");
+    const notice = panel.settings.text || object.notice;
+    if (!notice) return section.remove();
+    section.replaceChildren(el("p", {}, notice));
+  } else if (panel.kind === "TopicsView") {
+    const members = await readMembers(object);
+    const counts = new Map();
+    members.forEach((m) => (m.keywords || []).forEach((k) =>
+      counts.set(k, (counts.get(k) || 0) + 1)));
+    if (!counts.size) {
+      return note("None of the objects in this collection states a keyword, so there is nothing to explore by topic yet.");
+    }
+    const sorted = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 12);
+    section.append(el("div", { class: "facets" }, sorted.map(([topic, n]) =>
+      el("button", { class: "facet", type: "button", "data-topic": topic },
+        el("strong", {}, topic), el("span", { class: "muted" }, `${n} ${n === 1 ? "object" : "objects"}`)))));
+    section.querySelectorAll(".facet").forEach((button) => button.addEventListener("click", () => {
+      activeTopic = activeTopic === button.dataset.topic ? null : button.dataset.topic;
+      const collection = currentPages.find((p) => p.panels.some((x) => x.kind === "MembersView"));
+      if (collection) openPage(collection.title);
+    }));
+  } else if (panel.kind === "CategoriesView") {
+    const members = await readMembers(object);
+    const counts = new Map();
+    members.forEach((m) => {
+      const kind = m.type.find((t) => TYPE_LABELS[t]) || m.roTypes?.find((t) => TYPE_LABELS[t]);
+      const label = TYPE_LABELS[kind] || "Other objects";
+      counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    section.append(el("div", { class: "facets" }, [...counts].map(([label, n]) =>
+      el("div", { class: "facet count" }, el("span", { class: "stat-value" }, String(n)), el("strong", {}, label)))));
+    note(`${members.length} ${members.length === 1 ? "object" : "objects"} in all, counted from what each record states.`);
+  } else if (panel.kind === "PartnersView") {
+    const logos = object.parts.filter((p) => (p.role || "").endsWith("Partner"));
+    if (!logos.length) return note("This object names no partners.");
+    section.classList.add("partners");
+    section.append(el("div", { class: "logos" }, logos.map((p) =>
+      el("img", { src: p.url, alt: p.name, title: p.name }))));
   } else if (panel.kind === "ResourcesView") {
     const dataset = object.dataset || object;
     if (!dataset.parts.length) return note("This object has no resources.");
@@ -424,6 +535,32 @@ function defaultPages(object) {
   ];
 }
 
+/**
+ * The footer of any dashboard: short statements the object makes about itself
+ * (cca:footerStatement1..n, "Heading — text") and the partner logos it carries.
+ */
+function renderFooter(object) {
+  const slot = document.getElementById("footer-extra");
+  slot.replaceChildren();
+
+  const statements = (object.footer || []).map(String);
+  if (statements.length) {
+    slot.append(el("div", { class: "trust" }, statements.map((statement) => {
+      const [heading, ...rest] = statement.split("—");
+      return el("div", { class: "trust-item" },
+        el("strong", {}, heading.trim()),
+        rest.length ? el("span", { class: "muted" }, rest.join("—").trim()) : null);
+    })));
+  }
+
+  const logos = object.parts.filter((p) => (p.role || "").endsWith("Partner"));
+  if (logos.length) {
+    slot.append(el("div", { class: "partners" },
+      el("span", { class: "muted" }, "In collaboration with"),
+      el("div", { class: "logos" }, logos.map((p) => el("img", { src: p.url, alt: p.name, title: p.name })))));
+  }
+}
+
 async function show(pid) {
   const main = document.getElementById("main");
   const nav = document.getElementById("pages");
@@ -478,6 +615,8 @@ async function show(pid) {
   });
   drawPage(pages[0], object);
 
+  renderFooter(object);
+
   const details = el("details", { class: "howto" }, el("summary", {}, "How this page is described"));
   details.append(el("p", { class: "muted" },
     "This viewer holds no configuration for any dashboard. It reads the RO-Crate that ROHub serves for the object " +
@@ -489,6 +628,7 @@ async function show(pid) {
   document.getElementById("after").replaceChildren(details);
 }
 
+let activeTopic = null;
 let currentObject = null;
 let currentPages = [];
 let currentPage = null;
