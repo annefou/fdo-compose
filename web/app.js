@@ -33,6 +33,7 @@ function viewerUrl(store, settings = {}) {
 const PANEL_LABELS = {
   HeroView: "",
   NoticeView: "",
+  AskView: "",
   TopicsView: "Explore resources by topic",
   CategoriesView: "Browse our resources",
   PartnersView: "",
@@ -73,7 +74,16 @@ function term(entity, iri) {
   const values = [...asList(entity[iri]), ...(compact ? asList(entity[compact]) : [])];
   return values.map(idOf).filter((v) => v !== undefined && v !== null);
 }
-const one = (entity, iri) => term(entity, iri)[0];
+/**
+ * The value an object states for a term. ROHub annotations are append-only and a fork
+ * inherits its parent's, so the way to change a statement is to add a newer one: the
+ * last value wins. (Override semantics belong in the profile; this is the reading that
+ * makes editing possible today.)
+ */
+const one = (entity, iri) => {
+  const values = term(entity, iri);
+  return values[values.length - 1];
+};
 
 const crates = new Map();
 
@@ -163,11 +173,7 @@ function readObject(fetched) {
     type,
     accepts: short(one(root, CCA + "accepts")),
     colour: one(root, CCA + "primaryColorHex"),
-    footer: [1, 2, 3, 4, 5, 6].map((n) => one(root, `${CCA}footerStatement${n}`)).filter(Boolean),
-    heroTitle: one(root, CCA + "heroTitle"),
-    heroHighlight: one(root, CCA + "heroHighlight"),
-    notice: one(root, CCA + "notice"),
-    ask: one(root, CCA + "ask"),
+
     members: parts.filter((p) => RO_PID.test(p.url) && p.url !== marked).map((p) => p.url),
     claims: parts.filter((p) => p.url.includes("/np/")).map((p) => p.url),
     stacUrl: parts.find((p) => p.mediaType === "application/geo+json")?.url,
@@ -356,13 +362,18 @@ async function renderPanel(panel, object, into) {
     note("Each claim is a nanopublication the dataset links to; the text is read from the nanopublication itself.");
   } else if (panel.kind === "MembersView") {
     if (!object.members.length) return note("This object lists no members.");
-    if (activeTopic) {
+    if (activeTopic || searchText) {
       const members = await readMembers(object);
-      const keep = members.filter((m) => (m.keywords || []).includes(activeTopic));
-      section.append(el("p", { class: "filter" }, `Topic: ${activeTopic} `,
+      const keep = members.filter((m) =>
+        (!activeTopic || (m.keywords || []).includes(activeTopic)) &&
+        (!searchText || `${m.name} ${m.description} ${(m.keywords || []).join(" ")}`
+          .toLowerCase().includes(searchText)));
+      section.append(el("p", { class: "filter" },
+        activeTopic ? `Topic: ${activeTopic} ` : `Search: ${searchText} `,
         el("button", { class: "clear", type: "button" }, "show all")));
       section.querySelector(".clear").addEventListener("click", () => {
         activeTopic = null;
+        searchText = "";
         openPage(currentPage.title);
       });
       section.append(el("ul", { class: "members" }, keep.map((m) =>
@@ -398,28 +409,28 @@ async function renderPanel(panel, object, into) {
       section.style.backgroundImage =
         `linear-gradient(to right, rgba(255,255,255,.92) 0%, rgba(255,255,255,.75) 45%, rgba(255,255,255,.25) 100%), url("${image.url}")`;
     }
-    // The crate's own title and description carry the words; annotations add what a crate
-    // cannot say: which part of the heading to highlight, and the invitation in the search box.
-    const heading = panel.settings.heading || object.heroTitle || object.name;
-    const highlight = panel.settings.highlight || object.heroHighlight;
-    const parts = highlight && heading.includes(highlight)
-      ? heading.split(highlight) : null;
-    section.append(parts
-      ? el("h2", { class: "hero-title" }, parts[0], el("span", { class: "hl" }, highlight), parts[1])
-      : el("h2", { class: "hero-title" }, heading));
-    const lead = panel.settings.lead || object.description;
-    if (lead) section.append(el("p", { class: "hero-lead" }, lead));
-    const ask = panel.settings.ask || object.ask;
-    if (ask) {
-      section.append(el("div", { class: "ask" },
-        el("input", { type: "text", placeholder: ask, disabled: "disabled" }),
-        el("span", { class: "muted" }, "no question-answering service is connected to this object yet")));
-    }
+    // The words are the object's own: its title and its description. Nothing here is
+    // written in an annotation, and nothing is written in this viewer.
+    section.append(el("h2", { class: "hero-title" }, object.name));
+    if (object.description) section.append(el("p", { class: "hero-lead" }, object.description));
   } else if (panel.kind === "NoticeView") {
+    // The text of a notice is a file in the object (notice.md), so a curator can change it.
+    const file = fileFor(object, "Notice", /^notice\.(md|txt)$/i);
+    if (!file) return section.remove();
+    const text = await fetch(file.url).then((r) => r.text()).catch(() => "");
+    if (!text.trim()) return section.remove();
     section.classList.add("notice");
-    const notice = panel.settings.text || object.notice;
-    if (!notice) return section.remove();
-    section.replaceChildren(el("p", {}, notice));
+    section.replaceChildren(el("p", {}, text.trim()));
+  } else if (panel.kind === "AskView") {
+    section.append(el("div", { class: "ask" },
+      el("input", { type: "text", placeholder: "Search these resources…", id: "ask" })));
+    const input = section.querySelector("#ask");
+    input.addEventListener("input", () => {
+      searchText = input.value.trim().toLowerCase();
+      const collection = currentPages.find((p) => p.panels.some((x) => x.kind === "MembersView"));
+      if (searchText && collection && collection.title !== currentPage.title) openPage(collection.title);
+    });
+    note("Searches the titles, descriptions and topics of the objects in this collection. No question-answering service is connected to this object.");
   } else if (panel.kind === "TopicsView") {
     const members = await readMembers(object);
     const counts = new Map();
@@ -553,11 +564,18 @@ function defaultPages(object) {
  * The footer of any dashboard: short statements the object makes about itself
  * (cca:footerStatement1..n, "Heading — text") and the partner logos it carries.
  */
+async function readFooter(object) {
+  const file = fileFor(object, "Footer", /^footer\.(md|txt)$/i);
+  if (!file) return [];
+  const text = await fetch(file.url).then((r) => r.text()).catch(() => "");
+  return text.split("\n").map((line) => line.replace(/^[-*]\s*/, "").trim()).filter(Boolean);
+}
+
 function renderFooter(object) {
   const slot = document.getElementById("footer-extra");
   slot.replaceChildren();
 
-  const statements = (object.footer || []).map(String);
+  const statements = (object.footerLines || []).map(String);
   if (statements.length) {
     slot.append(el("div", { class: "trust" }, statements.map((statement) => {
       const [heading, ...rest] = statement.split("—");
@@ -629,6 +647,7 @@ async function show(pid) {
   });
   drawPage(pages[0], object);
 
+  readFooter(object).then((lines) => { object.footerLines = lines; renderFooter(object); });
   renderFooter(object);
 
   const details = el("details", { class: "howto" }, el("summary", {}, "How this page is described"));
@@ -643,6 +662,7 @@ async function show(pid) {
 }
 
 let activeTopic = null;
+let searchText = "";
 let currentObject = null;
 let currentPages = [];
 let currentPage = null;
