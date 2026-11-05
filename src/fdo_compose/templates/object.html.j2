@@ -2,6 +2,19 @@
 {% block title %}{{ d.name }} — the FAIR Digital Object{% endblock %}
 {% block content %}
 <h1>{{ d.name }}</h1>
+
+<section class="intro">
+  <p><strong>What you are looking at.</strong> This page was generated from one object in ROHub. That object is the
+  dashboard: it states which panels to show, in which order, with which renderer and which settings, and which dataset
+  to show them for. Nothing on this page, and nothing on
+  <a href="dashboard.html">the page that draws it</a>, is written in the website's code.</p>
+  <p><strong>Why it matters.</strong> Open the object in ROHub, fork it, replace its input dataset or change a colour,
+  and both pages follow on the next build. A dashboard becomes something you publish, cite and hand to another city,
+  rather than a configuration file in someone's repository.</p>
+  <p class="muted">Experimental, built for FAIR2Adapt: WP2's CCA RO-Crate profile (how a dashboard is written down) and
+  WP4's dashboards (what renders it).</p>
+</section>
+
 <p class="lead">{{ d.fields.description }}</p>
 
 <section class="card">

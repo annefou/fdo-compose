@@ -50,3 +50,8 @@ figure.np { margin: 0 0 1rem; }
 figure.np iframe { width: 100%; min-height: 11rem; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
 figure.np figcaption { font-size: .78rem; margin-top: .25rem; }
 figure.np figcaption a { color: var(--muted); }
+
+.intro { background: #fff; border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: 6px;
+         padding: 1rem 1.2rem; margin: 1rem 0 1.4rem; }
+.intro p { margin: 0 0 .6rem; }
+.intro p:last-child { margin-bottom: 0; }

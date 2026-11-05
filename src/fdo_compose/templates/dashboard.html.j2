@@ -2,6 +2,12 @@
 {% block title %}{{ d.name }} — dashboard{% endblock %}
 {% block content %}
 <h1>{{ d.dataset.name if d.dataset else d.name }}</h1>
+<section class="intro">
+  <p><strong>Everything below is drawn from the object, not from this site's code.</strong> The panels, their order and
+  their settings are what <a href="index.html">the dashboard FAIR Digital Object</a> states; the data, the variables and
+  the claims come from the dataset FDO it names. The renderer has no knowledge of this dataset.</p>
+</section>
+
 <p class="lead">
   {% if d.dataset %}Rendered from <a href="{{ d.pid }}">this dashboard FDO</a>, showing
   <a href="{{ d.dataset.pid }}">this dataset FDO</a>. The panels below, their order and their settings are what the
