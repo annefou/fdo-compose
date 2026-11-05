@@ -23,7 +23,9 @@ from _rohub import CCA, SCHEMA, annotate, login, pid, retry
 
 BRAND = {"theme.json": CCA + "Theme", "logo.png": CCA + "Logo",
          "background.png": CCA + "BackgroundImage"}
-REPLACED = ("theme.json", "logo.png", "background.png")   # the members stay; new ones are added
+# A fork inherits every resource. The brand of the parent must go, or the new hub shows
+# the old one's logos; the members stay, and new ones are added beside them.
+REPLACED = ("theme.json", "logo.png", "background.png", "partner-", "notice.md", "footer.md")
 
 
 def headers() -> dict:
