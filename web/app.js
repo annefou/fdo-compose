@@ -31,11 +31,16 @@ function viewerUrl(store, settings = {}) {
 }
 
 const PANEL_LABELS = {
+  TextView: "About",
+  StatsView: "In numbers",
+  LinksView: "Where to go next",
+  EmbedView: "Service",
   MapView: "Map",
   VariablesView: "Variables",
   ClaimsView: "Claims",
-  MembersView: "Datasets in this collection",
+  MembersView: "In this collection",
   MetadataView: "About this object",
+  ResourcesView: "Files and links",
 };
 
 const el = (tag, attrs = {}, ...children) => {
@@ -109,13 +114,23 @@ function readObject(fetched) {
   const loose = panelsOf(root, "");
   if (!pages.length && loose.length) pages.push({ kind: "Page", title: "Dashboard", panels: loose });
 
-  const input =
-    parts.find((p) => (p.role || "").endsWith("InputDataset"))?.url ||
-    parts.find((p) => RO_PID.test(p.url))?.url ||
-    one(root, SCHEMA + "object");
+  const marked = parts.find((p) => (p.role || "").endsWith("InputDataset"))?.url;
+  const members = parts.filter((p) => RO_PID.test(p.url) && !(p.role || "").endsWith("Member"));
+  // A dashboard bound to one object: the marked resource, what the root states, or - so that a
+  // swap made by hand in ROHub still works - a single Research Object among the resources.
+  const input = marked || one(root, SCHEMA + "object") || (members.length === 1 ? members[0].url : null);
+
+  const iadopt = fetched.graph
+    .filter((e) => asList(e["@type"]).some((t) => String(t).includes("iadopt/ont/Variable")))
+    .map((e) => ({
+      iri: (e["@id"] || "").replace(/^https:\/\/ror\.org\//, ""),
+      label: e["rdfs:label"] || e.label || e.name,
+    }))
+    .filter((v) => v.label);
 
   return {
     pid,
+    iadopt,
     name: root.name || pid,
     description: root.description || "",
     licence: idOf(root.license),
@@ -123,7 +138,7 @@ function readObject(fetched) {
     type,
     accepts: short(one(root, CCA + "accepts")),
     colour: one(root, CCA + "primaryColorHex"),
-    members: parts.filter((p) => RO_PID.test(p.url)).map((p) => p.url),
+    members: parts.filter((p) => RO_PID.test(p.url) && p.url !== marked).map((p) => p.url),
     claims: parts.filter((p) => p.url.includes("/np/")).map((p) => p.url),
     stacUrl: parts.find((p) => p.mediaType === "application/geo+json")?.url,
     storeUrl: parts.find((p) => p.mediaType === "application/vnd+zarr")?.url,
@@ -235,15 +250,23 @@ async function renderPanel(panel, object, into) {
 
   if (panel.kind === "MapView") {
     const dataset = object.dataset || object;
-    if (!dataset.storeUrl) return note("The object this panel points at has no data store.");
+    // The viewer opens a Research Object PID directly, which is better than handing it a
+    // store URL: it reads the crate itself, so the variables keep their names and units.
+    const target = RO_PID.test(dataset.pid) ? dataset.pid : dataset.storeUrl;
+    if (!target) return note("The object this panel points at has no data to draw.");
     const withTheme = { colormap: object.themeColormap, ...panel.settings };
-    const url = viewerUrl(dataset.storeUrl, withTheme);
+    const url = viewerUrl(target, withTheme);
     section.append(el("iframe", { class: "map", src: url, title: `Map of ${dataset.name}` }));
     note(`renderer: ${panel.renderer || "any"}${settings ? " · " + settings : ""} — the settings travel to the viewer in the URL`);
     section.append(el("p", { class: "muted" }, link(url, "open the map in its own tab")));
   } else if (panel.kind === "VariablesView") {
     const dataset = object.dataset || object;
-    if (!dataset.stacUrl) return note("The object this panel points at has no STAC description.");
+    if (dataset.iadopt?.length) {
+      section.append(el("ul", { class: "vars" }, dataset.iadopt.map((v) =>
+        el("li", {}, link(v.iri, v.label)))));
+      return note("Each variable is an I-ADOPT decomposition published as a nanopublication: what is measured, of what, in what. A panel binds to these, not to the array name, so the same dashboard works on another city's data.");
+    }
+    if (!dataset.stacUrl) return note("The object this panel points at describes no variables.");
     const stac = await fetch(dataset.stacUrl).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     const bands = (stac?.properties?.bands || []).map((b) => b.name).filter(Boolean);
     if (!bands.length) return note("The STAC item lists no bands.");
@@ -289,6 +312,47 @@ async function renderPanel(panel, object, into) {
       ["Resources", el("span", {}, dataset.parts.map((p) => el("div", {}, link(p.url, p.name),
         p.mediaType ? el("span", { class: "muted" }, ` ${p.mediaType}`) : null)))],
     ]));
+  } else if (panel.kind === "ResourcesView") {
+    const dataset = object.dataset || object;
+    if (!dataset.parts.length) return note("This object has no resources.");
+    section.append(el("ul", { class: "members" }, dataset.parts.map((p) =>
+      el("li", {}, link(p.url, p.name), p.mediaType ? el("span", { class: "muted" }, ` ${p.mediaType}`) : null))));
+  } else if (panel.kind === "TextView") {
+    const text = panel.settings.text || object.description;
+    if (!text) return note("This object states no description.");
+    section.append(el("p", { class: "prose" }, text));
+  } else if (panel.kind === "StatsView") {
+    const dataset = object.dataset || object;
+    const available = {
+      datasets: [object.members.length || (object.input ? 1 : 0), "datasets"],
+      variables: [dataset.iadopt?.length || dataset.bandCount || 0, "variables"],
+      claims: [dataset.claims.length, "claims"],
+      resources: [dataset.parts.length, "resources"],
+      panels: [object.pages.reduce((n, page) => n + page.panels.length, 0), "panels"],
+    };
+    const wanted = (panel.settings.stats || "datasets,variables,claims,resources")
+      .split(",").map((k) => k.trim()).filter((k) => k in available);
+    section.append(el("div", { class: "stats" }, wanted.map((key) => {
+      const [value, label] = available[key];
+      return el("div", { class: "stat" }, el("span", { class: "stat-value" }, String(value)),
+        el("span", { class: "stat-label" }, label));
+    })));
+    note("Counted from the object and the dataset it shows, each time the page is opened.");
+  } else if (panel.kind === "LinksView") {
+    const others = object.pages.filter((page) => page.title !== currentPage?.title);
+    if (!others.length) return note("This dashboard has only one page.");
+    section.append(el("div", { class: "cards" }, others.map((page) =>
+      el("button", { class: "gocard", type: "button", "data-page": page.title },
+        el("strong", {}, page.title),
+        el("span", { class: "muted" }, page.panels.map((p) => PANEL_LABELS[p.kind] || p.kind).join(" · "))))));
+    section.querySelectorAll(".gocard").forEach((button) => {
+      button.addEventListener("click", () => openPage(button.dataset.page));
+    });
+  } else if (panel.kind === "EmbedView") {
+    const url = panel.settings.url || object.parts.find((p) => (p.role || "").endsWith("Embed"))?.url;
+    if (!url) return note("This panel names no service to embed.");
+    section.append(el("iframe", { class: "service", src: url, title: panel.settings.title || "Embedded service" }));
+    note(el("span", {}, "Embedded service: ", link(url)));
   } else {
     note(`This viewer has no renderer for ${panel.kind}.`);
   }
@@ -326,12 +390,29 @@ function compositionTable(object) {
     el("p", { class: "muted" }, "Every row is an annotation on the Research Object in ROHub. Change one there and reload this page."));
 }
 
+/** What to show for an object that describes no pages of its own. */
+function defaultPages(object) {
+  const panel = (kind) => ({ kind, settings: {} });
+  const geospatial = object.storeUrl || object.iadopt?.length;
+  if (geospatial) {
+    return [
+      { title: "Overview", panels: [panel("TextView"), panel("StatsView"), panel("ClaimsView"), panel("LinksView")] },
+      { title: "Explore the data", panels: [panel("MapView"), panel("VariablesView")] },
+      { title: "About the dataset", panels: [panel("MetadataView"), panel("ResourcesView")] },
+    ];
+  }
+  return [
+    { title: "About", panels: [panel("TextView"), panel("MetadataView")] },
+    { title: "Files and links", panels: [panel("ResourcesView")] },
+    { title: "Claims", panels: [panel("ClaimsView")] },
+  ];
+}
+
 async function show(pid) {
   const main = document.getElementById("main");
   const nav = document.getElementById("pages");
   main.replaceChildren(el("p", { class: "muted" }, "Reading the object from ROHub…"));
   nav.replaceChildren();
-  document.getElementById("pid").value = pid;
 
   let object;
   try {
@@ -353,29 +434,41 @@ async function show(pid) {
   }
 
   main.replaceChildren();
-  if (object.description) main.append(el("p", { class: "lead" }, object.description));
-  main.append(describeObject(object));
-  if (object.pages.length) main.append(compositionTable(object));
+  const pagesSay = (object.pages.length ? object.pages : []).some((page) =>
+    page.panels.some((panel) => panel.kind === "TextView"));
+  if (object.description && !pagesSay) main.append(el("p", { class: "lead" }, object.description));
 
-  const pages = object.pages.length
-    ? object.pages
-    : [{ title: "Dataset", panels: [{ kind: "MapView", settings: {} }, { kind: "VariablesView", settings: {} },
-                                    { kind: "ClaimsView", settings: {} }, { kind: "MetadataView", settings: {} }] }];
+  const pages = object.pages.length ? object.pages : defaultPages(object);
 
+  currentObject = object;
+  currentPages = pages;
   pages.forEach((page, index) => {
     const anchor = el("a", { href: "#", class: index === 0 ? "on" : "" }, page.title);
-    anchor.addEventListener("click", (event) => {
-      event.preventDefault();
-      [...nav.children].forEach((child) => child.classList.remove("on"));
-      anchor.classList.add("on");
-      drawPage(page, object);
-    });
+    anchor.addEventListener("click", (event) => { event.preventDefault(); openPage(page.title); });
     nav.append(anchor);
   });
   drawPage(pages[0], object);
+
+  const details = el("details", { class: "howto" }, el("summary", {}, "How this page is described"));
+  details.append(describeObject(object));
+  if (object.pages.length) details.append(compositionTable(object));
+  document.getElementById("after").replaceChildren(details);
+}
+
+let currentObject = null;
+let currentPages = [];
+let currentPage = null;
+
+function openPage(title) {
+  const page = currentPages.find((p) => p.title === title) || currentPages[0];
+  [...document.getElementById("pages").children].forEach((child) =>
+    child.classList.toggle("on", child.textContent === page.title));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  drawPage(page, currentObject);
 }
 
 async function drawPage(page, object) {
+  currentPage = page;
   const body = document.getElementById("page");
   body.replaceChildren(el("h2", { class: "pagetitle" }, page.title));
   for (const panel of page.panels) await renderPanel(panel, object, body);
@@ -388,12 +481,7 @@ window.addEventListener("message", (event) => {
   });
 });
 
-const DEFAULT_PID = "https://w3id.org/ro-id/0391206f-3399-458f-b6b8-f6048c36c5b5";
-document.getElementById("open").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const pid = document.getElementById("pid").value.trim();
-  history.pushState({}, "", `?fdo=${encodeURIComponent(pid)}`);
-  show(pid);
-});
-window.addEventListener("popstate", () => show(new URLSearchParams(location.search).get("fdo") || DEFAULT_PID));
-show(new URLSearchParams(location.search).get("fdo") || DEFAULT_PID);
+const DEFAULT_PID = "https://w3id.org/ro-id/87e3dd69-0907-488f-9304-6280de312c78";
+const wanted = () => new URLSearchParams(location.search).get("fdo") || DEFAULT_PID;
+window.addEventListener("popstate", () => show(wanted()));
+show(wanted());

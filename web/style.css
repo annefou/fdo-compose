@@ -16,10 +16,10 @@ code { font-family: var(--mono); font-size: .85em; background: #eaf0f3; border-r
 .bar { background: var(--primary); color: #fff; padding: .9rem 1.4rem 0; }
 .bar-row { display: flex; flex-wrap: wrap; gap: .8rem 1.5rem; align-items: center; justify-content: space-between; }
 .brand { font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
-.pidform { display: flex; gap: .4rem; align-items: center; font-size: .82rem; }
-.pidform label { opacity: .85; }
-.pidform input { width: min(30rem, 52vw); padding: .32rem .5rem; border: 0; border-radius: 4px; font-family: var(--mono); font-size: .78rem; }
-.pidform button { padding: .34rem .8rem; border: 0; border-radius: 4px; background: var(--accent); color: #05281c; font-weight: 600; cursor: pointer; }
+.hint { font-size: .78rem; opacity: .8; }
+.hint code { background: rgba(255,255,255,.18); color: #fff; }
+ul.vars { margin: 0; padding-left: 1.1rem; }
+ul.vars li { margin-bottom: .35rem; }
 .bar h1 { font-size: 1.45rem; margin: .7rem 0 .2rem; }
 .pages { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: .6rem; }
 .pages a { color: #cfe6f0; text-decoration: none; padding: .45rem 0; border-bottom: 3px solid transparent; font-size: .95rem; }
@@ -62,3 +62,19 @@ footer p { margin: 0 0 .6rem; }
 .brand { display: inline-flex; align-items: center; gap: .6rem; }
 #logo img { height: 1.9rem; width: auto; background: #fff; border-radius: 3px; padding: .15rem .3rem; }
 .bar { background-color: var(--primary); }
+
+.prose { margin: 0; white-space: pre-wrap; }
+.stats { display: flex; flex-wrap: wrap; gap: 1.6rem 2.4rem; }
+.stat { display: flex; flex-direction: column; }
+.stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); line-height: 1.1; }
+.stat-label { font-size: .82rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .8rem; }
+.gocard { text-align: left; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--accent);
+          border-radius: 6px; padding: .8rem .9rem; cursor: pointer; display: flex; flex-direction: column; gap: .3rem;
+          font: inherit; color: inherit; }
+.gocard:hover { border-color: var(--primary); }
+iframe.service { width: 100%; height: 26rem; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+
+.howto { margin: 2rem 0 0; }
+.howto summary { cursor: pointer; color: var(--muted); font-size: .88rem; padding: .4rem 0; }
+.howto[open] summary { color: var(--primary); }
