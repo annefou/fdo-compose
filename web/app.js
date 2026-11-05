@@ -70,6 +70,13 @@ function term(entity, iri) {
 }
 const one = (entity, iri) => term(entity, iri)[0];
 
+const crates = new Map();
+
+function objectOf(pid) {
+  if (!crates.has(pid)) crates.set(pid, crateOf(pid).then(readObject));
+  return crates.get(pid);
+}
+
 async function crateOf(pid) {
   const match = RO_PID.exec(pid.trim());
   if (!match) throw new Error(`not a ROHub PID: ${pid}`);
@@ -243,6 +250,11 @@ async function renderPanel(panel, object, into) {
   const label = PANEL_LABELS[panel.kind] || panel.kind;
   const section = card(label);
   into.append(section);
+  if (object.datasetPromise && !object.dataset) {
+    section.append(el("p", { class: "muted" }, "reading the dataset…"));
+    await object.datasetPromise;
+    section.replaceChildren(el("h2", {}, label));
+  }
 
   const settings = Object.entries(panel.settings)
     .map(([k, v]) => `${k} = ${v}`).join(" · ");
@@ -411,7 +423,7 @@ function defaultPages(object) {
 async function show(pid) {
   const main = document.getElementById("main");
   const nav = document.getElementById("pages");
-  main.replaceChildren(el("p", { class: "muted" }, "Reading the object from ROHub…"));
+  main.replaceChildren(el("p", { class: "muted" }, "Reading " + pid + " from ROHub…"));
   nav.replaceChildren();
 
   let object;
@@ -428,10 +440,12 @@ async function show(pid) {
   document.getElementById("source").replaceChildren(link(object.pid, "source object in ROHub"));
   document.title = object.name;
 
+  // The dataset is fetched in the background: the pages appear at once and each panel
+  // waits only for what it needs.
   if (object.input) {
-    try {
-      object.dataset = readObject(await crateOf(object.input));
-    } catch { /* a dashboard whose dataset cannot be read still shows what it says */ }
+    object.datasetPromise = objectOf(object.input)
+      .then((dataset) => { object.dataset = dataset; return dataset; })
+      .catch(() => null);
   }
 
   main.replaceChildren();
@@ -477,7 +491,7 @@ async function drawPage(page, object) {
   currentPage = page;
   const body = document.getElementById("page");
   body.replaceChildren(el("h2", { class: "pagetitle" }, page.title));
-  for (const panel of page.panels) await renderPanel(panel, object, body);
+  await Promise.all(page.panels.map((panel) => renderPanel(panel, object, body)));
 }
 
 window.addEventListener("message", (event) => {
