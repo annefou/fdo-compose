@@ -173,6 +173,8 @@ function readObject(fetched) {
     type,
     accepts: short(one(root, CCA + "accepts")),
     colour: one(root, CCA + "primaryColorHex"),
+    //: a dashboard FDO whose composition is used for the members of this collection
+    memberDashboard: one(root, CCA + "memberDashboard"),
 
     members: parts.filter((p) => RO_PID.test(p.url) && p.url !== marked).map((p) => p.url),
     claims: parts.filter((p) => p.url.includes("/np/")).map((p) => p.url),
@@ -631,7 +633,7 @@ async function show(pid) {
   document.getElementById("source").replaceChildren(link(object.pid, "source object in ROHub"));
 
   // The way back, when this object was opened from another one
-  const from = new URLSearchParams(location.search).get("from");
+  const from = wantedFrom();
   const trail = document.getElementById("trail");
   trail.replaceChildren();
   if (from) {
@@ -654,7 +656,20 @@ async function show(pid) {
     page.panels.some((panel) => panel.kind === "TextView"));
   if (object.description && !pagesSay) main.append(el("p", { class: "lead" }, object.description));
 
-  const pages = object.pages.length ? object.pages : defaultPages(object);
+  // A member opened from a collection is shown the way that collection says its members
+  // are shown; failing that, the way this viewer shows an object of its kind.
+  let pages = object.pages;
+  if (!pages.length && from) {
+    const parent = await objectOf(from).catch(() => null);
+    if (parent?.memberDashboard) {
+      const template = await objectOf(parent.memberDashboard).catch(() => null);
+      if (template?.pages.length) {
+        pages = template.pages;
+        object.dataset = object;            // the member is what those pages show
+      }
+    }
+  }
+  if (!pages.length) pages = defaultPages(object);
 
   currentObject = object;
   currentPages = pages;
@@ -710,5 +725,6 @@ window.addEventListener("message", (event) => {
 
 const DEFAULT_PID = "https://w3id.org/ro-id/87e3dd69-0907-488f-9304-6280de312c78";
 const wanted = () => new URLSearchParams(location.search).get("fdo") || DEFAULT_PID;
+const wantedFrom = () => new URLSearchParams(location.search).get("from");
 window.addEventListener("popstate", () => show(wanted()));
 show(wanted());
