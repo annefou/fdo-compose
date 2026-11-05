@@ -425,6 +425,7 @@ async function show(pid) {
   applyTheme(theme, object);
   if (theme.colormap) object.themeColormap = theme.colormap;
   document.getElementById("title").textContent = object.name;
+  document.getElementById("source").replaceChildren(link(object.pid, "source object in ROHub"));
   document.title = object.name;
 
   if (object.input) {
@@ -450,6 +451,11 @@ async function show(pid) {
   drawPage(pages[0], object);
 
   const details = el("details", { class: "howto" }, el("summary", {}, "How this page is described"));
+  details.append(el("p", { class: "muted" },
+    "This viewer holds no configuration for any dashboard. It reads the RO-Crate that ROHub serves for the object " +
+    "below and draws the pages, panels, settings and data that the annotations on that object state; change the " +
+    "object in ROHub and reload. The terms it reads are those the draft profile map cca-dashboard-0.1 declares, " +
+    "which fdo-consume uses on the publishing side."));
   details.append(describeObject(object));
   if (object.pages.length) details.append(compositionTable(object));
   document.getElementById("after").replaceChildren(details);
