@@ -244,7 +244,10 @@ function definitions(pairs) {
 }
 
 const link = (href, text) => el("a", { href, target: "_blank", rel: "noreferrer" }, text || href);
-const objectLink = (pid, text) => el("a", { href: `?fdo=${encodeURIComponent(pid)}` }, text || pid);
+/** A link to another object, keeping the trail back to the one we came from. */
+const objectLink = (pid, text, from) => el("a", {
+  href: `?fdo=${encodeURIComponent(pid)}` + (from ? `&from=${encodeURIComponent(from)}` : ""),
+}, text || pid);
 
 async function renderPanel(panel, object, into) {
   const label = PANEL_LABELS[panel.kind] || panel.kind;
@@ -306,12 +309,13 @@ async function renderPanel(panel, object, into) {
     if (!object.members.length) return note("This object lists no member datasets.");
     const list = el("ul", { class: "members" });
     for (const member of object.members) {
-      const item = el("li", {}, objectLink(member, member));
+      const item = el("li", {}, objectLink(member, member, object.pid));
       list.append(item);
-      crateOf(member).then((fetched) => {
-        const described = readObject(fetched);
-        item.replaceChildren(objectLink(member, described.name),
-          el("span", { class: "muted" }, ` — ${described.type.join(", ") || "object"}`));
+      objectOf(member).then((described) => {
+        item.replaceChildren(objectLink(member, described.name, object.pid),
+          described.description
+            ? el("div", { class: "muted" }, described.description.slice(0, 180))
+            : null);
       }).catch(() => {});
     }
     section.append(list);
@@ -438,6 +442,16 @@ async function show(pid) {
   if (theme.colormap) object.themeColormap = theme.colormap;
   document.getElementById("title").textContent = object.name;
   document.getElementById("source").replaceChildren(link(object.pid, "source object in ROHub"));
+
+  // The way back, when this object was opened from another one
+  const from = new URLSearchParams(location.search).get("from");
+  const trail = document.getElementById("trail");
+  trail.replaceChildren();
+  if (from) {
+    const back = objectLink(from, "← back");
+    trail.append(back);
+    objectOf(from).then((parent) => back.replaceChildren(`← ${parent.name}`)).catch(() => {});
+  }
   document.title = object.name;
 
   // The dataset is fetched in the background: the pages appear at once and each panel
