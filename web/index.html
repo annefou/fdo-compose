@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboards from FAIR Digital Objects</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <div class="bar-row">
+    <span class="brand"><span id="logo"></span>FAIR2Adapt · dashboards from FAIR Digital Objects</span>
+    <form id="open" class="pidform">
+      <label for="pid">Object</label>
+      <input id="pid" name="pid" type="text" spellcheck="false" placeholder="https://w3id.org/ro-id/…">
+      <button type="submit">Open</button>
+    </form>
+  </div>
+  <h1 id="title">…</h1>
+  <nav id="pages" class="pages"></nav>
+</header>
+
+<main>
+  <div id="main"></div>
+  <div id="page"></div>
+</main>
+
+<footer>
+  <p>This page holds no configuration for any dashboard. It reads the RO-Crate that ROHub serves for the object above,
+  takes the panels, their order, their settings and the dataset from the annotations on that object, and draws them.
+  Change the object in ROHub and reload: there is nothing to rebuild.</p>
+  <p class="muted">Vocabulary: the draft dashboard profile <code>cca-dashboard-0.1</code>, the same map
+  <a href="https://github.com/annefou/fdo-consume/tree/cca-dashboard-profile">fdo-consume</a> uses when the objects are
+  published and checked. Source: <a href="https://github.com/annefou/fdo-compose">annefou/fdo-compose</a>. Experimental.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

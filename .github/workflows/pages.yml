@@ -1,11 +1,13 @@
-name: Build and publish the example pages
+name: Publish the viewer
+
+# The viewer is a static page that reads the objects from ROHub in the browser,
+# so publishing means copying web/ to GitHub Pages: there is nothing to build,
+# and a change made to an object in ROHub shows on the next reload.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: "0 6 * * 1"          # Mondays: pick up changes made to the objects in ROHub
 
 permissions:
   contents: read
@@ -17,31 +19,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    env:
-      DASHBOARD_PID: https://w3id.org/ro-id/0391206f-3399-458f-b6b8-f6048c36c5b5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install
-        run: |
-          pip install git+https://github.com/annefou/fdo-consume.git@cca-dashboard-profile
-          pip install .
-      - name: Build the pages from the objects in ROHub
-        run: fdo-compose "$DASHBOARD_PID" -o site --refresh
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
   deploy:
-    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
       - id: deployment
         uses: actions/deploy-pages@v4
