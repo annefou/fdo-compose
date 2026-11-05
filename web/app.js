@@ -801,10 +801,6 @@ async function show(pid) {
   }
 
   main.replaceChildren();
-  const pagesSay = (object.pages.length ? object.pages : []).some((page) =>
-    page.panels.some((panel) => panel.kind === "TextView"));
-  if (object.description && !pagesSay) main.append(el("div", { class: "lead", html: markdown(object.description) }));
-
   // A member opened from a collection is shown the way that collection says its members
   // are shown; failing that, the way this viewer shows an object of its kind.
   let pages = object.pages;
@@ -816,6 +812,14 @@ async function show(pid) {
     }
   }
   if (!pages.length) pages = defaultPages(object);
+
+  // The description is the lead only when no page shows it: a member takes its pages from
+  // a template, so this can only be decided once the pages are known.
+  const shown = pages.some((page) => page.panels.some((panel) =>
+    panel.kind === "TextView" || panel.kind === "HeroView"));
+  if (object.description && !shown) {
+    main.append(el("div", { class: "lead", html: markdown(object.description) }));
+  }
 
   currentObject = object;
   currentPages = pages;
