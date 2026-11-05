@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .reader import read_dashboard, read_json, read_object
+from .reader import read_dashboard, read_json, read_nanopub_label, read_object
 
 CCA = "https://w3id.org/ro/terms/cca/"
 VIEW_LABELS = {
@@ -43,6 +43,7 @@ class Dataset:
     licence: str | None = None
     parts: list[dict] = field(default_factory=list)
     stac: dict | None = None
+    claims: list[dict] = field(default_factory=list)
 
     @property
     def stac_url(self) -> str | None:
@@ -111,5 +112,9 @@ def build(pid: str, cache: Path, refresh: bool = False) -> Dashboard:
         )
         if dataset.stac_url:
             dataset.stac = read_json(dataset.stac_url)
+        for part in dataset.parts:
+            if "/np/" in (part.get("url") or ""):
+                dataset.claims.append({"url": part["url"],
+                                       "label": read_nanopub_label(part["url"]) or part.get("name")})
 
     return Dashboard(pid=pid, fields=fields, panels=panels, dataset=dataset)

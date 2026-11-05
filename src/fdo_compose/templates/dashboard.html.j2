@@ -35,8 +35,18 @@
     {% endif %}
 
   {% elif p.kind.endswith("ClaimsView") %}
-    <p class="muted">No claims are recorded for this dataset: its crate links no nanopublication. The panel stays in
-    the composition, and fills as soon as claims about this PID are published.</p>
+    {% if d.dataset and d.dataset.claims %}
+      <ul class="claims">
+        {% for c in d.dataset.claims %}
+        <li>{{ c.label }}<br><a class="muted" href="{{ c.url }}">{{ c.url }}</a></li>
+        {% endfor %}
+      </ul>
+      <p class="muted">Each claim is a nanopublication the dataset FDO links to; the text is the label the
+      nanopublication gives itself, read from its own record, not copied into the crate.</p>
+    {% else %}
+      <p class="muted">No claims are recorded for this dataset: its crate links no nanopublication. The panel stays in
+      the composition, and fills as soon as claims about this PID are published.</p>
+    {% endif %}
 
   {% else %}
     <p class="muted">No renderer in this build for <code>{{ p.kind }}</code>.</p>

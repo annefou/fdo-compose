@@ -72,3 +72,19 @@ def read_json(url: str) -> dict | None:
         return json.loads(fetch(url))
     except Exception:            # noqa: BLE001 - a missing or broken service must not fail a build
         return None
+
+
+NANOPUB_LABEL = re.compile(r'rdfs:label\s+"((?:[^"\\]|\\.)*)"')
+
+
+def read_nanopub_label(uri: str) -> str | None:
+    """The label a nanopublication gives itself, read from its TriG."""
+    try:
+        request = urllib.request.Request(uri, headers={"Accept": "application/trig"})
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+            trig = response.read().decode("utf-8", "replace")
+    except Exception:            # noqa: BLE001 - a claim that cannot be read is shown as a link
+        return None
+    match = NANOPUB_LABEL.search(trig)
+    return match.group(1) if match else None
+
