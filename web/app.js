@@ -145,7 +145,7 @@ function readObject(fetched) {
   const pages = [];
   for (let n = 1; n <= 9; n += 1) {
     const kind = one(root, `${CCA}page${n}`);
-    if (!kind) continue;
+    if (!kind || kind.endsWith("Hidden")) continue;   // a later annotation can withdraw a page
     pages.push({
       kind: short(kind),
       title: one(root, `${CCA}page${n}Title`) || PANEL_LABELS[short(kind)] || short(kind),
@@ -442,10 +442,11 @@ async function renderPanel(panel, object, into) {
       const item = el("li", {}, objectLink(member, member, object.pid));
       list.append(item);
       objectOf(member).then((described) => {
-        item.replaceChildren(kindIcon(described), objectLink(member, described.name, object.pid),
-          described.description
-            ? el("div", { class: "muted" }, described.description.slice(0, 180))
-            : null);
+        item.replaceChildren(...[
+          kindIcon(described),
+          objectLink(member, described.name, object.pid),
+          described.description ? el("div", { class: "muted" }, described.description.slice(0, 180)) : null,
+        ].filter(Boolean));
       }).catch(() => {});
     }
     section.append(list);
