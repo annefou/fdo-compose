@@ -310,6 +310,7 @@ const TYPE_LABELS = {
   GeospatialDataset: "Datasets",
   Dashboard: "Dashboards",
   ResearchObject: "Research objects",
+  Dataset: "Datasets",
 };
 
 const KIND_ICONS = {
@@ -317,19 +318,32 @@ const KIND_ICONS = {
   Datasets: '<svg viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="4" rx="5" ry="2" fill="none" stroke="currentColor"/><path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2" fill="none" stroke="currentColor"/></svg>',
   Workflows: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="5" height="3.5" fill="none" stroke="currentColor"/><rect x="9.5" y="9.5" width="5" height="3.5" fill="none" stroke="currentColor"/><path d="M6.5 4.3h4c.8 0 1.5.7 1.5 1.5v3.7" fill="none" stroke="currentColor"/></svg>',
   Dashboards: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="9" fill="none" stroke="currentColor"/><path d="M6 14h4M8 11.5V14" fill="none" stroke="currentColor"/></svg>',
+  "Research objects": '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.8 5.5 3v6.4L8 14.2l-5.5-3V4.8z" fill="none" stroke="currentColor"/><path d="m2.5 4.8 5.5 3 5.5-3M8 7.8v6.4" fill="none" stroke="currentColor"/></svg>',
+  "Other objects": '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor"/></svg>',
 };
 
 function kindIcon(object) {
   const kind = kindOf(object);
-  const svg = KIND_ICONS[kind];
-  return svg
-    ? el("span", { class: "kindicon", title: kind.replace(/s$/, ""), html: svg })
-    : null;
+  const svg = KIND_ICONS[kind] || KIND_ICONS["Other objects"];
+  return el("span", { class: "kindicon", title: kind.replace(/s$/, ""), html: svg });
 }
 
+/**
+ * The kind of an object, judged by the most specific type it states. A ROHub crate types a
+ * research object several times over - Dataset, ResearchObject, ExecutableResearchObject -
+ * so the order of the list says nothing; and an object that carries data a map can draw is a
+ * dataset whatever else it calls itself.
+ */
+const TYPE_PRIORITY = [
+  "GeospatialDataset", "Dataset", "BibliographyResearchObject", "BibliographyCentricResearchObject",
+  "Publication", "ExecutableResearchObject", "Dashboard", "ResearchObject",
+];
+
 function kindOf(object) {
-  const names = [...object.type, ...(object.roTypes || [])].map((t) => short(String(t).split("#").pop()));
-  const match = names.find((n) => TYPE_LABELS[n]);
+  if (object.storeUrl || object.iadopt?.length) return "Datasets";
+  const names = new Set([...object.type, ...(object.roTypes || [])]
+    .map((t) => short(String(t).split("#").pop())));
+  const match = TYPE_PRIORITY.find((name) => names.has(name) && TYPE_LABELS[name]);
   return TYPE_LABELS[match] || "Other objects";
 }
 
