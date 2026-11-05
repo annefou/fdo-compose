@@ -22,4 +22,4 @@ fdo-compose = "fdo_compose.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-fdo_compose = ["templates/*.j2", "static/*"]
+fdo_compose = ["templates/*.j2", "static/*", "contracts/*.yaml"]

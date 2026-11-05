@@ -17,7 +17,7 @@ from fdo_consume import consume, describe
 
 ROHUB_PID = re.compile(r"^https://w3id\.org/ro-id/([0-9a-f-]{36})$")
 CRATE = "https://api.rohub.org/api/ros/{uuid}/crate/download/"
-CONTRACTS = Path(__file__).resolve().parents[2] / "contracts"
+CONTRACTS = Path(__file__).resolve().parent / "contracts"   # shipped with the package
 TIMEOUT = 90
 
 
@@ -54,6 +54,9 @@ def read_dashboard(pid: str, folder: Path, refresh: bool = False) -> dict:
     fields["_statuses"] = {k: (v.get("status") if isinstance(v, dict) else v)
                            for k, v in (result.statuses or {}).items()}
     fields["_diagnostics"] = [d.get("message") for d in (result.diagnostics or [])]
+    if not fields.get("title"):
+        raise SystemExit(f"{pid}: the reader returned no fields. "
+                         f"Statuses {fields['_statuses']}; {'; '.join(fields['_diagnostics']) or 'no diagnostics'}")
     return fields
 
 
