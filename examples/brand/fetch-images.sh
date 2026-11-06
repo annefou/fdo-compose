@@ -56,5 +56,8 @@ trim(positive, "matchmaker/partner-mission-adaptation.png")
 PY
 rm -f matchmaker/mission-negative.png
 
-# Matchmaker: the hero background is drawn, not borrowed
-python3 ../../scripts/background.py matchmaker/background.png
+# Matchmaker: rolling hills in soft light, free to use under the Unsplash Licence
+# (Firli S, https://unsplash.com/photos/rolling-green-hills-under-a-soft-light--psmFP4VC8A)
+curl -sL -o matchmaker/background.jpg \
+  "https://images.unsplash.com/photo-1774816069888-736d818d349d?fm=jpg&q=75&w=2400&auto=format&fit=crop"
+rm -f matchmaker/background.png

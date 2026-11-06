@@ -47,7 +47,7 @@ files:
   brand/matchmaker/theme.json: cca:Theme
   brand/matchmaker/notice.md: cca:Notice
   brand/matchmaker/footer.md: cca:Footer
-  brand/matchmaker/background.png: cca:BackgroundImage
+  brand/matchmaker/background.jpg: cca:BackgroundImage
   brand/matchmaker/partner-eosc.png: cca:Partner
   brand/matchmaker/partner-fair2adapt.png: cca:Partner
   brand/matchmaker/partner-mission-adaptation.png: cca:Partner
