@@ -1,6 +1,6 @@
 {
-  "primaryColor": "#0f6e8c",
-  "accentColor": "#f0a202",
-  "backgroundColor": "#f4f8fa",
-  "_note": "The look of this dashboard. Replace this file in ROHub to restyle it."
+  "primaryColor": "#1d6886",
+  "accentColor": "#1dc690",
+  "backgroundColor": "#f2f8fa",
+  "_note": "FAIR2Adapt's own palette, taken from the FAIR Solution one-pagers: teal #1d6886, green #1dc690, pale #d0eef8. Replace this file in ROHub to restyle the dashboard."
 }

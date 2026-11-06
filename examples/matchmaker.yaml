@@ -48,6 +48,9 @@ files:
   brand/matchmaker/notice.md: cca:Notice
   brand/matchmaker/footer.md: cca:Footer
   brand/matchmaker/background.png: cca:BackgroundImage
+  brand/matchmaker/partner-eosc.png: cca:Partner
+  brand/matchmaker/partner-fair2adapt.png: cca:Partner
+  brand/matchmaker/partner-eu.png: cca:Partner
 
 external:
   - url: https://w3id.org/spaces/fairclimatematchmaker

@@ -1030,7 +1030,8 @@ async function drawPage(page, object) {
   currentPage = { ...page, panels, searchInHero: hasHero && wantsSearch };
   page = currentPage;
   const body = document.getElementById("page");
-  body.replaceChildren(el("h2", { class: "pagetitle" }, page.title));
+  // A hero already names the object, so a page heading above it would say it twice.
+  body.replaceChildren(hasHero ? "" : el("h2", { class: "pagetitle" }, page.title));
   await Promise.all(page.panels.map((panel) => renderPanel(panel, object, body)));
 }
 
