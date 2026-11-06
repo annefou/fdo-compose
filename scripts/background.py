@@ -1,15 +1,17 @@
-"""Draw a background image for a dashboard, in the colours it already uses.
+"""Draw a hero background for a dashboard, in the colours it already uses.
 
-A hero needs an image behind it, and stock photography brings a licence along with
-it. This draws one instead: a globe graticule in the object's own colours, with a few
-cells picked out, which reads as "a grid over the world" without claiming to be any
-particular place. The result is a file like any other brand file, so it is uploaded to
-ROHub with publish.py and replaced by replacing the resource.
+A hero needs an image behind it, and a stock photograph brings a licence along with
+it. This draws one instead: a soft wash from the dashboard's pale colour through its
+primary to its accent, with faint contour lines running across it, so the hero has
+depth without competing with the words in front of it. The result is a brand file like
+any other, uploaded with publish.py and changed by replacing the resource in ROHub.
 
-    python scripts/background.py ../examples/brand/matchmaker/background.png \
-        --from "#d0eef8" --to "#1d6886" --cell "#1dc690"
+    python scripts/background.py ../examples/brand/matchmaker/background.png
+    python scripts/background.py ../examples/brand/x/background.png \
+        --pale "#eaf6fb" --primary "#1d6886" --accent "#1dc690"
 
-Colours default to the FAIR2Adapt palette: pale #d0eef8, teal #1d6886, green #1dc690.
+The defaults are the FAIR2Adapt palette. Text usually sits on the left, so the pale
+colour is kept there and the saturated ones are pushed to the right.
 """
 
 from __future__ import annotations
@@ -18,86 +20,77 @@ import argparse
 import math
 from pathlib import Path
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-#: cells of the graticule to pick out, as (meridian index, parallel index)
-HIGHLIGHTS = ((3, 2), (6, 1), (8, 3), (11, 2))
-MERIDIANS, PARALLELS = 14, 5
+#: blobs of colour, as (x, y, radius, colour name, strength); x and y are fractions
+BLOBS = (
+    (1.05, 0.95, 0.95, "deep", 1.00),
+    (0.85, 0.20, 0.70, "primary", 0.95),
+    (0.55, 0.85, 0.55, "primary", 0.70),
+    (0.95, 0.55, 0.40, "accent", 0.55),
+    (0.15, 0.10, 0.60, "pale", 1.00),
+)
+LINES = 26          #: contour lines drawn across the wash
+LINE_ALPHA = 46     #: how faint each one is
 
 
-def rgb(value: str) -> tuple[int, int, int]:
+def rgb(value: str) -> np.ndarray:
     value = value.lstrip("#")
-    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
+    return np.array([int(value[i:i + 2], 16) for i in (0, 2, 4)], dtype=float)
 
 
-def wash(size: tuple[int, int], start: tuple[int, int, int], end: tuple[int, int, int]) -> Image.Image:
-    """A diagonal gradient from one colour to the other."""
+def darker(colour: np.ndarray, by: float = 0.62) -> np.ndarray:
+    return colour * by
+
+
+def wash(size: tuple[int, int], palette: dict[str, np.ndarray]) -> Image.Image:
+    """Soft blobs of the palette's colours, melted into one another."""
     width, height = size
-    image = Image.new("RGB", size)
-    pixels = image.load()
-    for x in range(width):
-        for y in range(0, height, 4):
-            t = (x / width) * 0.78 + (y / height) * 0.22
-            colour = tuple(round(start[i] + (end[i] - start[i]) * t) for i in range(3))
-            for dy in range(4):
-                if y + dy < height:
-                    pixels[x, y + dy] = colour
-    return image
+    rows, columns = np.mgrid[0:height, 0:width]
+    u, v = columns / width, rows / height
+    image = np.ones((height, width, 3)) * palette["pale"]
+    for cx, cy, radius, name, strength in BLOBS:
+        distance = np.sqrt((u - cx) ** 2 + ((v - cy) * (height / width)) ** 2)
+        weight = (np.clip(1 - (distance / radius) ** 2, 0, 1) ** 1.5 * strength)[..., None]
+        image = image * (1 - weight) + palette[name] * weight
+    return Image.fromarray(image.clip(0, 255).astype("uint8")).filter(ImageFilter.GaussianBlur(14))
 
 
-def point(lon: float, lat: float, box: tuple[float, float, float, float]) -> tuple[float, float]:
-    """A longitude and latitude on an orthographic globe filling the box."""
-    left, top, right, bottom = box
-    cx, cy = (left + right) / 2, (top + bottom) / 2
-    return (cx + (right - left) / 2 * math.sin(lon) * math.cos(lat),
-            cy - (bottom - top) / 2 * math.sin(lat))
-
-
-def draw_graticule(image: Image.Image, cell: tuple[int, int, int]) -> None:
+def contours(image: Image.Image) -> Image.Image:
+    """Faint lines running left to right, the way a contour map reads."""
     width, height = image.size
-    box = (-width * 0.15, -height * 0.12, width * 1.15, height * 1.12)
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     pen = ImageDraw.Draw(layer)
-
-    lons = [-math.pi / 2 + math.pi * i / (MERIDIANS - 1) for i in range(MERIDIANS)]
-    lats = [-math.pi / 2 + math.pi * j / (PARALLELS + 1) for j in range(1, PARALLELS + 1)]
-
-    for (i, j) in HIGHLIGHTS:                      # cells first, so the lines sit on top
-        if i + 1 >= len(lons) or j + 1 >= len(lats):
-            continue
-        edge = []
-        edge += [point(lons[i] + (lons[i + 1] - lons[i]) * k / 12, lats[j], box) for k in range(13)]
-        edge += [point(lons[i + 1], lats[j] + (lats[j + 1] - lats[j]) * k / 12, box) for k in range(13)]
-        edge += [point(lons[i + 1] - (lons[i + 1] - lons[i]) * k / 12, lats[j + 1], box) for k in range(13)]
-        edge += [point(lons[i], lats[j + 1] - (lats[j + 1] - lats[j]) * k / 12, box) for k in range(13)]
-        pen.polygon(edge, fill=cell + (95,))
-
-    for lon in lons:                               # meridians
-        pen.line([point(lon, -math.pi / 2 + math.pi * k / 120, box) for k in range(121)],
-                 fill=(255, 255, 255, 120), width=2)
-    for lat in lats:                               # parallels
-        pen.line([point(-math.pi / 2 + math.pi * k / 120, lat, box) for k in range(121)],
-                 fill=(255, 255, 255, 120), width=2)
-
-    image.paste(Image.alpha_composite(image.convert("RGBA"), layer).convert("RGB"), (0, 0))
+    spacing = (height + 400) / LINES
+    for k in range(LINES):
+        start = -200 + k * spacing
+        points = [(x, start
+                   + 0.136 * height * math.sin(x / width * 2.2 + k * 0.21)
+                   + 0.064 * height * math.sin(x / width * 5.1 + k * 0.6)
+                   + k * 8 * x / width)
+                  for x in range(0, width + 20, 20)]
+        pen.line(points, fill=(255, 255, 255, LINE_ALPHA), width=2)
+    return Image.alpha_composite(image.convert("RGBA"), layer).convert("RGB")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="background.py", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("out", type=Path, help="the image to write")
-    parser.add_argument("--from", dest="start", default="#d0eef8", help="colour at the top left")
-    parser.add_argument("--to", dest="end", default="#1d6886", help="colour at the bottom right")
-    parser.add_argument("--cell", default="#1dc690", help="colour of the highlighted cells")
+    parser.add_argument("--pale", default="#eaf6fb", help="the colour behind the words")
+    parser.add_argument("--primary", default="#1d6886", help="the dashboard's primary colour")
+    parser.add_argument("--accent", default="#1dc690", help="the dashboard's accent colour")
     parser.add_argument("--size", default="2000x1100", help="pixels, WIDTHxHEIGHT")
     args = parser.parse_args()
 
     width, height = (int(n) for n in args.size.lower().split("x"))
-    image = wash((width, height), rgb(args.start), rgb(args.end))
-    draw_graticule(image, rgb(args.cell))
-    image = image.filter(ImageFilter.GaussianBlur(0.6))
+    primary = rgb(args.primary)
+    palette = {"pale": rgb(args.pale), "primary": primary,
+               "accent": rgb(args.accent), "deep": darker(primary)}
+    image = contours(wash((width, height), palette)).filter(ImageFilter.GaussianBlur(0.4))
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    image.save(args.out, optimize=True)
+    image.save(args.out, quality=90, optimize=True)
     print("wrote", args.out, f"{width}x{height}")
     return 0
 
