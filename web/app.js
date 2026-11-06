@@ -34,6 +34,7 @@ const PANEL_LABELS = {
   HeroView: "",
   NoticeView: "",
   AskView: "",
+  QueryView: "",
   TopicsView: "Explore resources by topic",
   CategoriesView: "Browse our resources",
   PartnersView: "",
@@ -355,6 +356,48 @@ function kindOf(object) {
  */
 const recordUri = (uri) => uri.replace(/^https:\/\/w3id\.org\/[a-z0-9-]+\/np\//, "https://w3id.org/np/");
 
+const QUERY_API = "https://query.knowledgepixels.com/api/";
+const QUERY_IRI = /^https?:\/\/w3id\.org\/np\/(RA[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+)$/;
+
+/**
+ * Run a published query: a Nanodash space states each of its views as a grlc query
+ * nanopublication, and the service answers it over the nanopublication network. The panel
+ * names the query by its IRI, so what is displayed is a published, citable question.
+ */
+async function runQuery(iri, parameters = {}) {
+  const match = QUERY_IRI.exec(iri || "");
+  if (!match) throw new Error(`not a published query: ${iri}`);
+  const url = new URL(QUERY_API + match[1]);
+  Object.entries(parameters).forEach(([k, v]) => url.searchParams.set(k, v));
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`the query service answered ${response.status}`);
+  const payload = await response.json();
+  return {
+    columns: payload.head?.vars || [],
+    rows: (payload.results?.bindings || []).map((row) =>
+      Object.fromEntries(Object.entries(row).map(([k, v]) => [k, v.value]))),
+  };
+}
+
+/**
+ * Nanodash's column conventions: a column X with a sibling X_label shows the label and
+ * links to the IRI; a name ending in _multi or _multi_iri holds several values; np is the
+ * nanopublication the row came from.
+ */
+function queryColumns(columns) {
+  const labels = new Set(columns.filter((c) => c.endsWith("_label") || c.endsWith("_label_multi")));
+  const shown = columns.filter((c) => {
+    if (c === "np" || c === "np_label") return false;
+    if (labels.has(`${c}_label`) || labels.has(`${c}_label_multi`)) return false;
+    return !c.endsWith("_label") && !c.endsWith("_label_multi");
+  });
+  return { shown, labels };
+}
+
+const prettyColumn = (name) => name
+  .replace(/_multi_iri$|_multi$|_iri$/, "").replace(/_/g, " ")
+  .replace(/^./, (c) => c.toUpperCase());
+
 /** The sentence a nanopublication states, with who signed it and when. */
 async function readNanopub(uri) {
   try {
@@ -611,6 +654,51 @@ async function renderPanel(panel, object, into) {
     section.classList.add("partners");
     section.append(el("div", { class: "logos" }, logos.map((p) =>
       el("img", { src: p.url, alt: p.name, title: p.name }))));
+  } else if (panel.kind === "QueryView") {
+    const iri = panel.settings.query || panel.settings.object;
+    if (!iri) return note("This panel names no query.");
+    section.append(el("p", { class: "muted" }, "running the query…"));
+    let result;
+    try {
+      result = await runQuery(iri);
+    } catch (error) {
+      return section.replaceChildren(el("h2", {}, label || "Query"),
+        el("p", { class: "muted" }, String(error.message)));
+    }
+    section.replaceChildren(...(label ? [el("h2", {}, label)] : []));
+    if (!result.rows.length) return note("The query returned nothing.");
+
+    const { shown, labels } = queryColumns(result.columns);
+    const asCards = (panel.settings.layout || "").toLowerCase() === "cards";
+    if (asCards) {
+      section.append(el("div", { class: "qcards" }, result.rows.map((row) => {
+        const card = el("article", { class: "qcard" });
+        shown.forEach((column, i) => {
+          const value = row[`${column}_label`] || row[`${column}_label_multi`] || row[column] || "";
+          if (!value) return;
+          const parts = value.split(/\s+(?=https?:\/\/)|\n/).filter(Boolean);
+          const body = /^https?:\/\//.test(row[column] || "") && (row[`${column}_label`] || row[`${column}_label_multi`])
+            ? link(row[column], value)
+            : parts.join(", ");
+          card.append(i === 0
+            ? el("h3", {}, body)
+            : el("p", {}, el("span", { class: "qlabel" }, prettyColumn(column) + ": "), body));
+        });
+        if (row.np) card.append(el("p", { class: "muted" }, link(row.np, "the nanopublication")));
+        return card;
+      })));
+    } else {
+      const head = el("tr", {}, shown.map((c) => el("th", {}, prettyColumn(c))), el("th", {}, "Source"));
+      const body = el("tbody", {}, result.rows.map((row) => el("tr", {},
+        shown.map((column) => {
+          const text = row[`${column}_label`] || row[`${column}_label_multi`] || row[column] || "";
+          const href = /^https?:\/\//.test(row[column] || "") ? row[column] : null;
+          return el("td", {}, href && text !== row[column] ? link(href, text) : text);
+        }),
+        el("td", {}, row.np ? link(row.np, "nanopub") : ""))));
+      section.append(el("div", { class: "qtable" }, el("table", { class: "panels" }, el("thead", {}, head), body)));
+    }
+    note(`${result.rows.length} ${result.rows.length === 1 ? "result" : "results"}, read live from the nanopublication network · ${iri.split("/").pop()}`);
   } else if (panel.kind === "ResourcesView") {
     const dataset = object.dataset || object;
     if (!dataset.parts.length) return note("This object has no resources.");

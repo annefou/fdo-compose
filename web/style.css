@@ -126,3 +126,12 @@ ul.members li { margin-bottom: .6rem; }
 .prose li { margin-bottom: .2rem; }
 .lead p { margin: 0 0 .5rem; }
 .lead h3, .lead h4 { font-size: .95rem; color: var(--primary); margin: .8rem 0 .3rem; }
+
+.qtable { overflow-x: auto; }
+.qtable td { font-size: .88rem; }
+.qcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: .9rem; }
+.qcard { background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--accent);
+         border-radius: 6px; padding: .8rem 1rem; }
+.qcard h3 { font-size: .98rem; margin: 0 0 .4rem; color: var(--primary); }
+.qcard p { margin: 0 0 .3rem; font-size: .88rem; }
+.qlabel { color: var(--muted); }
