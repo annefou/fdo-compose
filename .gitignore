@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 examples/brand/**/*.png
 examples/brand/**/*.jpg
+build/
+*.egg-info/

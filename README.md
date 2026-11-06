@@ -18,17 +18,18 @@ Live example (FAIR2Adapt, experimental):
 | Dashboard template (no dataset: says what it accepts) | `https://w3id.org/ro-id/e57645d9-6754-40cd-ae58-9739d65667c1` |
 | Dashboard instance (fork of the template, bound to the dataset) | `https://w3id.org/ro-id/0391206f-3399-458f-b6b8-f6048c36c5b5` |
 
-## Build
+## Run it
+
+There is nothing to build. `web/` is the whole viewer: open `web/index.html` over any static
+server and give it an object.
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install git+https://github.com/annefou/fdo-consume.git@cca-dashboard-profile
-pip install -e .
-fdo-compose https://w3id.org/ro-id/0391206f-3399-458f-b6b8-f6048c36c5b5 -o site --refresh
+python3 -m http.server --directory web 8777
+# then http://localhost:8777/?fdo=https://w3id.org/ro-id/<uuid>
 ```
 
-`--refresh` fetches the crates from ROHub; without it the build repeats offline from `.fdo-cache`,
-which holds each crate exactly as ROHub generated it.
+It reads the RO-Crate ROHub serves for that PID, in the browser, each time the page is opened.
+Publishing is a copy of `web/` to the `gh-pages` branch, which GitHub Pages serves.
 
 ## How a dashboard is written in ROHub
 
@@ -54,7 +55,8 @@ resources. It cannot carry a nested entity, so a panel is written as numbered pr
 (`cca:panel1`, `cca:panel1Renderer`, `cca:panel1Colormap`) rather than as a panel entity with its
 own fields. Lifting that limit is the main request to ROHub; everything else here works today.
 
-`profiles/cca-dashboard-0.1.yaml` is the profile map that reads those terms. It also lives in
+`profiles/cca-dashboard-0.1.yaml` is the profile map that declares those terms, kept here for
+reading; the copy that software uses lives in
 [annefou/fdo-consume](https://github.com/annefou/fdo-consume/tree/cca-dashboard-profile), ready
 for a pull request to FAIR2Adapt once the terms are agreed. The profile IRI it selects on,
 `https://w3id.org/ro/terms/cca/dashboard-profile/0.1`, is a draft and is **not published yet**.
