@@ -385,13 +385,21 @@ async function runQuery(iri, parameters = {}) {
  * nanopublication the row came from.
  */
 function queryColumns(columns) {
-  const labels = new Set(columns.filter((c) => c.endsWith("_label") || c.endsWith("_label_multi")));
-  const shown = columns.filter((c) => {
-    if (c === "np" || c === "np_label") return false;
-    if (labels.has(`${c}_label`) || labels.has(`${c}_label_multi`)) return false;
-    return !c.endsWith("_label") && !c.endsWith("_label_multi");
-  });
-  return { shown, labels };
+  // A label column is not shown on its own: it is the text of the column it belongs to.
+  const isLabel = (c) => c.endsWith("_label") || c.endsWith("_label_multi")
+    || c.endsWith("_label_multi_iri");
+  const shown = columns.filter((c) => c !== "np" && c !== "np_label" && c !== "date" && !isLabel(c));
+  return { shown };
+}
+
+/** What a cell shows: the label of the value when the query provides one. */
+function cellOf(row, column) {
+  const base = column.replace(/_multi_iri$|_multi$|_iri$/, "");
+  const text = row[`${column}_label`] || row[`${base}_label`] || row[`${base}_label_multi`]
+    || row[`${base}_label_multi_iri`] || row[column] || "";
+  const value = row[column] || "";
+  const href = /^https?:\/\//.test(value) ? value : null;
+  return { text, href };
 }
 
 const prettyColumn = (name) => name
@@ -668,21 +676,20 @@ async function renderPanel(panel, object, into) {
     section.replaceChildren(...(label ? [el("h2", {}, label)] : []));
     if (!result.rows.length) return note("The query returned nothing.");
 
-    const { shown, labels } = queryColumns(result.columns);
+    const { shown } = queryColumns(result.columns);
     const asCards = (panel.settings.layout || "").toLowerCase() === "cards";
     if (asCards) {
       section.append(el("div", { class: "qcards" }, result.rows.map((row) => {
         const card = el("article", { class: "qcard" });
-        shown.forEach((column, i) => {
-          const value = row[`${column}_label`] || row[`${column}_label_multi`] || row[column] || "";
-          if (!value) return;
-          const parts = value.split(/\s+(?=https?:\/\/)|\n/).filter(Boolean);
-          const body = /^https?:\/\//.test(row[column] || "") && (row[`${column}_label`] || row[`${column}_label_multi`])
-            ? link(row[column], value)
-            : parts.join(", ");
-          card.append(i === 0
+        const cells = shown.map((column) => ({ column, ...cellOf(row, column) }))
+          .filter((cell) => cell.text);
+        // The heading is the first cell that reads as a name rather than an address.
+        const headingAt = cells.findIndex((cell) => !/^https?:\/\//.test(cell.text));
+        cells.forEach((cell, i) => {
+          const body = cell.href && cell.text !== cell.href ? link(cell.href, cell.text) : cell.text;
+          card.append(i === headingAt
             ? el("h3", {}, body)
-            : el("p", {}, el("span", { class: "qlabel" }, prettyColumn(column) + ": "), body));
+            : el("p", {}, el("span", { class: "qlabel" }, prettyColumn(cell.column) + ": "), body));
         });
         if (row.np) card.append(el("p", { class: "muted" }, link(row.np, "the nanopublication")));
         return card;
@@ -691,9 +698,8 @@ async function renderPanel(panel, object, into) {
       const head = el("tr", {}, shown.map((c) => el("th", {}, prettyColumn(c))), el("th", {}, "Source"));
       const body = el("tbody", {}, result.rows.map((row) => el("tr", {},
         shown.map((column) => {
-          const text = row[`${column}_label`] || row[`${column}_label_multi`] || row[column] || "";
-          const href = /^https?:\/\//.test(row[column] || "") ? row[column] : null;
-          return el("td", {}, href && text !== row[column] ? link(href, text) : text);
+          const { text, href } = cellOf(row, column);
+          return el("td", {}, href && text !== href ? link(href, text) : text);
         }),
         el("td", {}, row.np ? link(row.np, "nanopub") : ""))));
       section.append(el("div", { class: "qtable" }, el("table", { class: "panels" }, el("thead", {}, head), body)));
