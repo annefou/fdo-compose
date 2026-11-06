@@ -1,0 +1,55 @@
+# The FAIR Climate Matchmaker space, read through published queries.
+# Live: https://annefou.github.io/fdo-compose/?fdo=https%3A%2F%2Fw3id.org%2Fro-id%2F5e0f9468-7a2b-4396-a1c0-5152cf923300
+id: 5e0f9468-7a2b-4396-a1c0-5152cf923300
+title: FAIR Climate Matchmaker (dashboard composed from FAIR Digital Objects)
+description: >
+  A reading of the FAIR Climate Matchmaker space (https://w3id.org/spaces/fairclimatematchmaker)
+  whose arrangement is described by this Research Object: which published queries to run, on which
+  page, and how to show their results. The content is not copied here - each panel runs a grlc query
+  nanopublication against the nanopublication network when the page is opened, so what a visitor
+  reads is whatever the community has published by then. Experimental, FAIR2Adapt.
+research_areas: [Earth Sciences]
+access: PUBLIC
+
+annotations:
+  schema:additionalType: cca:Dashboard
+  dct:conformsTo: https://w3id.org/ro/terms/cca/dashboard-profile/0.1
+  schema:about: https://w3id.org/spaces/fairclimatematchmaker
+  cca:accepts: cca:Query
+
+  cca:page1: cca:OverviewPage
+  cca:page1Title: FAIR Climate Matchmaker
+  cca:page1Panel1: cca:NoticeView
+  cca:page1Panel2: cca:HeroView
+  cca:page1Panel3: cca:QueryView
+  cca:page1Panel3Query: https://w3id.org/np/RAwhCOVgo8-hj3YhFRoFX4b-flQpnOiZ1PyXJOd59sOf0/get-cca-fsr
+  cca:page1Panel3Layout: cards
+  cca:page1Panel4: cca:LinksView
+
+  cca:page2: cca:CollectionPage
+  cca:page2Title: Recommended resources
+  cca:page2Panel1: cca:QueryView
+  cca:page2Panel1Query: https://w3id.org/np/RA8piV4ERrDNzrDP1xAEo4QIupiK9hmdbh7r3jbKAguyU/get-recommended-fsrs
+
+  cca:page3: cca:CollectionPage
+  cca:page3Title: What people need
+  cca:page3Panel1: cca:QueryView
+  cca:page3Panel1Query: https://w3id.org/np/RAfyDmxn_LMbSEH5mg-9FAFAJ5ar3sdRu-xPDALR-_Pbo/get-all-us
+  cca:page3Panel1Layout: cards
+
+  cca:page4: cca:DetailsPage
+  cca:page4Title: About
+  cca:page4Panel1: cca:TextView
+  cca:page4Panel2: cca:MetadataView
+  cca:page4Panel3: cca:ResourcesView
+
+files:
+  brand/matchmaker/theme.json: cca:Theme
+  brand/matchmaker/notice.md: cca:Notice
+  brand/matchmaker/footer.md: cca:Footer
+  brand/matchmaker/background.png: cca:BackgroundImage
+
+external:
+  - url: https://w3id.org/spaces/fairclimatematchmaker
+    title: The space this dashboard reads
+    role: cca:Space

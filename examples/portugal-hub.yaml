@@ -1,0 +1,60 @@
+# The CS4 Portugal hub, composed from WP4's three publication FDOs.
+# Live: https://annefou.github.io/fdo-compose/?fdo=https%3A%2F%2Fw3id.org%2Fro-id%2Fd5f638ff-35a8-4481-824c-3adfad07f187
+id: d5f638ff-35a8-4481-824c-3adfad07f187
+title: Portugal Adaptation Knowledge Dashboard (composed from FAIR Digital Objects)
+description: >
+  A hub for climate adaptation knowledge in Portugal whose website is described by this Research
+  Object: its pages and panels are annotations, its words and colours are files, and the
+  publications it lists are its resources. It carries the same three publication FAIR Digital
+  Objects and the same brand as the CS4 prototype, so that the two can be compared.
+research_areas: [Earth Sciences]
+access: PUBLIC
+
+annotations:
+  schema:additionalType: cca:Dashboard
+  dct:conformsTo: https://w3id.org/ro/terms/cca/dashboard-profile/0.1
+  cca:accepts: cca:Publication
+  cca:memberDashboard: https://w3id.org/ro-id/e57645d9-6754-40cd-ae58-9739d65667c1
+
+  cca:page1: cca:OverviewPage
+  cca:page1Title: Home
+  cca:page1Panel1: cca:NoticeView
+  cca:page1Panel2: cca:HeroView
+  cca:page1Panel3: cca:TopicsView
+  cca:page1Panel4: cca:CategoriesView
+  cca:page1Panel5: cca:LinksView
+  cca:page1Panel6: cca:AskView
+
+  cca:page2: cca:CollectionPage
+  cca:page2Title: Resources
+  cca:page2Panel1: cca:MembersView
+
+  cca:page3: cca:DetailsPage
+  cca:page3Title: About
+  cca:page3Panel1: cca:TextView
+  cca:page3Panel2: cca:MetadataView
+  cca:page3Panel3: cca:ResourcesView
+
+files:
+  brand/portugal/theme.json: cca:Theme
+  brand/portugal/notice.md: cca:Notice
+  brand/portugal/footer.md: cca:Footer
+  brand/portugal/logo.png: cca:Logo
+  brand/portugal/background.png: cca:BackgroundImage
+  brand/portugal/partner-ce3c.png: cca:Partner
+  brand/portugal/partner-fair2adapt.png: cca:Partner
+  brand/portugal/partner-adaptation-hubs.png: cca:Partner
+
+external:
+  - url: https://w3id.org/ro-id/c594948e-cf4f-44ce-b96e-097e6ba5cd8e
+    title: Publication 1 in this hub
+    type: Paper
+    role: cca:Member
+  - url: https://w3id.org/ro-id/10f2756e-a221-4754-8b90-d088ab4409e5
+    title: Publication 2 in this hub
+    type: Paper
+    role: cca:Member
+  - url: https://w3id.org/ro-id/1bffc87b-d080-41ec-96b5-5f46ecbd76db
+    title: Publication 3 in this hub
+    type: Paper
+    role: cca:Member

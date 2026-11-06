@@ -1,0 +1,31 @@
+# A fork of the Portugal hub, rebranded, with datasets beside the publications.
+# Create with:  python scripts/fork.py d5f638ff-35a8-4481-824c-3adfad07f187 examples/lifewatch-fork.yaml
+# Live: https://annefou.github.io/fdo-compose/?fdo=https%3A%2F%2Fw3id.org%2Fro-id%2F157aa098-aea8-4504-849b-c33da056f85a
+id: 157aa098-aea8-4504-849b-c33da056f85a
+title: LifeWatch ERIC adaptation knowledge (demonstration fork)
+description: >
+  A hub forked from the Portugal dashboard and rebranded: the same composition, different files,
+  and a collection that mixes publications with geospatial datasets. Nothing in the viewer changed.
+research_areas: [Earth Sciences]
+access: PUBLIC
+
+annotations:
+  cca:memberDashboard: https://w3id.org/ro-id/e57645d9-6754-40cd-ae58-9739d65667c1
+
+files:
+  brand/lifewatch/theme.json: cca:Theme
+  brand/lifewatch/notice.md: cca:Notice
+  brand/lifewatch/footer.md: cca:Footer
+  brand/lifewatch/logo.png: cca:Logo
+  brand/lifewatch/background.png: cca:BackgroundImage
+  brand/lifewatch/partner-fair2adapt.png: cca:Partner
+
+external:
+  - url: https://w3id.org/ro-id/9c8ee58c-28f8-42ad-9ba8-0daf91935d31
+    title: RiOMar ocean hindcast (dataset)
+    type: Dataset
+    role: cca:Member
+  - url: https://w3id.org/ro-id/8b5d51c7-f33d-47e9-9aaf-c9b624b43ef4
+    title: Sentinel-3 Synergy on HEALPix (dataset)
+    type: Dataset
+    role: cca:Member

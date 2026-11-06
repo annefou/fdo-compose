@@ -1,0 +1,36 @@
+# A composition with no content of its own: it says how to display a geospatial dataset FDO.
+# A dashboard forks it and names the dataset; a collection offers it to its members.
+id: e57645d9-6754-40cd-ae58-9739d65667c1
+title: "Dashboard template: geospatial dataset on HEALPix (FAIR2Adapt, experimental)"
+description: >
+  A dashboard FAIR Digital Object that says how to display a geospatial dataset FDO, not which
+  one: the pages, the panels on each of them, the renderer each asks for and the style are
+  annotations on this object. To use it, fork it and add the dataset as a resource marked
+  cca:InputDataset.
+research_areas: [Earth Sciences]
+access: PUBLIC
+
+annotations:
+  schema:additionalType: cca:Dashboard
+  dct:conformsTo: https://w3id.org/ro/terms/cca/dashboard-profile/0.1
+  cca:accepts: cca:GeospatialDataset
+  cca:primaryColorHex: 1d6886
+
+  cca:page1: cca:OverviewPage
+  cca:page1Title: Overview
+  cca:page1Panel1: cca:TextView
+  cca:page1Panel2: cca:StatsView
+  cca:page1Panel2Stats: datasets,variables,claims,resources
+  cca:page1Panel3: cca:ClaimsView
+  cca:page1Panel4: cca:LinksView
+
+  cca:page2: cca:MapPage
+  cca:page2Title: Explore the data
+  cca:page2Panel1: cca:MapView
+  cca:page2Panel1Renderer: cca:plugin/healpix-map
+  cca:page2Panel1Colormap: thermal
+  cca:page2Panel2: cca:VariablesView
+
+  cca:page3: cca:DetailsPage
+  cca:page3Title: About the dataset
+  cca:page3Panel1: cca:MetadataView

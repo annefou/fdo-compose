@@ -32,13 +32,22 @@ which holds each crate exactly as ROHub generated it.
 
 ## How a dashboard is written in ROHub
 
-`scripts/` holds the three steps, and the gotchas are documented in `scripts/_rohub.py`:
+A dashboard is data, so it is written as a spec rather than as code. Two tools do the work,
+and the gotchas are documented in `scripts/_rohub.py`:
 
-| Script | What it does |
+| Tool | What it does |
 | --- | --- |
-| `create_dataset_fdo.py` | the dataset as its own FDO: STAC item and data store as resources, each with its format and convention |
-| `create_dashboard_template.py` | the dashboard template: annotations only, no resources |
-| `bind_dashboard.py` | fork the template and add one annotation, `schema:object`, naming the dataset |
+| `scripts/publish.py <spec.yaml>` | create an object in ROHub from a spec, or update the one the spec names (`--dry-run` first) |
+| `scripts/fork.py <uuid> <spec.yaml>` | fork an object, drop the brand it inherited, write the new one |
+
+A spec says the title and description, the annotations that compose the object, the files it
+carries and the objects it points at; `cca:` and `schema:` prefixes are expanded. `examples/`
+holds the spec of every dashboard listed above, and `examples/brand/` their words and colours.
+The images belong to other projects, so they are fetched rather than committed:
+`examples/brand/fetch-images.sh`.
+
+Re-running a spec updates the object: ROHub keeps the newest value of a property. It cannot
+remove one, so a statement is withdrawn by stating a newer value (`cca:page4 = cca:Hidden`).
 
 A ROHub annotation is a flat `{property, value}` pair on the Research Object or one of its
 resources. It cannot carry a nested entity, so a panel is written as numbered predicates

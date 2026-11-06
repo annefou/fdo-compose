@@ -1,0 +1,28 @@
+# A dataset as a FAIR Digital Object: the STAC item and the store, each with what a reader needs.
+id: 8b5d51c7-f33d-47e9-9aaf-c9b624b43ef4
+title: Sentinel-3 Synergy radiances on HEALPix (GRID4EARTH, reprocessed)
+description: >
+  Data FAIR Digital Object for one Sentinel-3 Synergy overpass reprocessed onto HEALPix (level 15)
+  by GRID4EARTH, served as a Zarr v3 store and described by a STAC item.
+research_areas: [Earth Sciences]
+access: PUBLIC
+
+annotations:
+  schema:additionalType: cca:GeospatialDataset
+  dct:conformsTo: https://w3id.org/ro/terms/cca/dashboard-profile/0.1
+  cca:spatialStructure: discrete global grid (HEALPix)
+
+external:
+  - url: https://stac-api.grid4earth.eu/collections/reprocessed-sentinel-3-synergy/items/reprocessed-synergy_20260915T101708_psf_level15
+    title: STAC item (describes the dataset)
+    type: Dataset
+    properties:
+      schema:encodingFormat: application/geo+json
+      dct:conformsTo: https://api.stacspec.org/v1.0.0/core
+  - url: https://data.grid4earth.eu/reprocessed/sentinel-3-synergy/synergy_20260915T101708_psf_level15.zarr
+    title: Zarr v3 store on HEALPix (the data)
+    type: Dataset
+    properties:
+      schema:encodingFormat: application/vnd+zarr
+      cca:spatialStructure: discrete global grid (HEALPix)
+      dct:conformsTo: https://github.com/zarr-conventions/dggs/blob/v1/README.md

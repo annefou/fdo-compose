@@ -3,3 +3,5 @@ site/
 __pycache__/
 *.egg-info/
 .venv/
+examples/brand/**/*.png
+examples/brand/**/*.jpg

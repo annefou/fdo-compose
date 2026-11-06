@@ -1,0 +1,23 @@
+# How to display a publication FDO. A collection offers it for its members that are papers.
+id: d0c97b41-4a0d-44f5-beec-2b1926b86251
+title: "Dashboard template: publication (FAIR2Adapt, experimental)"
+description: >
+  A dashboard FAIR Digital Object that says how to display a publication: what it is about, the
+  claims made about it, and the files and links it carries.
+research_areas: [Earth Sciences]
+access: PUBLIC
+
+annotations:
+  schema:additionalType: cca:Dashboard
+  dct:conformsTo: https://w3id.org/ro/terms/cca/dashboard-profile/0.1
+  cca:accepts: cca:Publication
+
+  cca:page1: cca:OverviewPage
+  cca:page1Title: The publication
+  cca:page1Panel1: cca:TextView
+  cca:page1Panel2: cca:MetadataView
+  cca:page1Panel3: cca:ClaimsView
+
+  cca:page2: cca:DetailsPage
+  cca:page2Title: Files and links
+  cca:page2Panel1: cca:ResourcesView
