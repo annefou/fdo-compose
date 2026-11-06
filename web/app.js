@@ -392,14 +392,39 @@ function queryColumns(columns) {
   return { shown };
 }
 
+/**
+ * A readable name for an address. Nanodash never shows a bare IRI: when a query gives no
+ * label, the last part of the address is used (Metadata-schema becomes "Metadata schema"),
+ * and for a nanopublication the label it states is fetched and put in its place.
+ */
+function nameOf(iri) {
+  const tail = String(iri).replace(/[/#]$/, "").split(/[/#]/).pop() || iri;
+  return decodeURIComponent(tail).replace(/[-_]+/g, " ").trim() || iri;
+}
+
+const npLabels = new Map();
+
+/** Replace the text of a link with the label its nanopublication states, when it has one. */
+function nameLater(anchor, iri) {
+  if (!/\/np\//.test(iri)) return anchor;
+  if (!npLabels.has(iri)) npLabels.set(iri, readNanopub(iri).then((np) => np.text || null));
+  npLabels.get(iri).then((label) => {
+    if (label) anchor.textContent = label.length > 90 ? label.slice(0, 90) + "…" : label;
+  }).catch(() => {});
+  return anchor;
+}
+
 /** What a cell shows: the label of the value when the query provides one. */
 function cellOf(row, column) {
+  // _multi columns hold several values separated by spaces; the first is enough for a cell,
+  // and the rest are shown after it.
   const base = column.replace(/_multi_iri$|_multi$|_iri$/, "");
   const text = row[`${column}_label`] || row[`${base}_label`] || row[`${base}_label_multi`]
     || row[`${base}_label_multi_iri`] || row[column] || "";
   const value = row[column] || "";
   const href = /^https?:\/\//.test(value) ? value : null;
-  return { text, href };
+  // A value that is only an address gets a name: its last part, or the nanopublication's label.
+  return { text: href && text === value ? nameOf(value) : text, href, bare: Boolean(href) && text === value };
 }
 
 const prettyColumn = (name) => name
@@ -684,11 +709,13 @@ async function renderPanel(panel, object, into) {
         // A cell that is a bare identifier with no label says nothing to a reader; the row
         // already links to the nanopublication it came from.
         const cells = shown.map((column) => ({ column, ...cellOf(row, column) }))
-          .filter((cell) => cell.text && cell.text !== cell.href);
+          .filter((cell) => cell.text);
         // The heading is the first cell that reads as a name rather than an address.
         const headingAt = cells.findIndex((cell) => !/^https?:\/\//.test(cell.text));
         cells.forEach((cell, i) => {
-          const body = cell.href && cell.text !== cell.href ? link(cell.href, cell.text) : cell.text;
+          const body = cell.href
+            ? (cell.bare ? nameLater(link(cell.href, cell.text), cell.href) : link(cell.href, cell.text))
+            : cell.text;
           card.append(i === headingAt
             ? el("h3", {}, body)
             : el("p", {}, el("span", { class: "qlabel" }, prettyColumn(cell.column) + ": "), body));
@@ -700,8 +727,10 @@ async function renderPanel(panel, object, into) {
       const head = el("tr", {}, shown.map((c) => el("th", {}, prettyColumn(c))), el("th", {}, "Source"));
       const body = el("tbody", {}, result.rows.map((row) => el("tr", {},
         shown.map((column) => {
-          const { text, href } = cellOf(row, column);
-          return el("td", {}, href && text !== href ? link(href, text) : text);
+          const { text, href, bare } = cellOf(row, column);
+          if (!href) return el("td", {}, text);
+          const anchor = link(href, text);
+          return el("td", {}, bare ? nameLater(anchor, href) : anchor);
         }),
         el("td", {}, row.np ? link(row.np, "nanopub") : ""))));
       section.append(el("div", { class: "qtable" }, el("table", { class: "panels" }, el("thead", {}, head), body)));

@@ -135,3 +135,7 @@ ul.members li { margin-bottom: .6rem; }
 .qcard h3 { font-size: .98rem; margin: 0 0 .4rem; color: var(--primary); }
 .qcard p { margin: 0 0 .3rem; font-size: .88rem; }
 .qlabel { color: var(--muted); }
+
+.qtable table { table-layout: fixed; width: 100%; }
+.qtable td, .qtable th { overflow-wrap: anywhere; vertical-align: top; }
+.qcard a, .qcard p { overflow-wrap: anywhere; }
