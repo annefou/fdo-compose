@@ -681,8 +681,10 @@ async function renderPanel(panel, object, into) {
     if (asCards) {
       section.append(el("div", { class: "qcards" }, result.rows.map((row) => {
         const card = el("article", { class: "qcard" });
+        // A cell that is a bare identifier with no label says nothing to a reader; the row
+        // already links to the nanopublication it came from.
         const cells = shown.map((column) => ({ column, ...cellOf(row, column) }))
-          .filter((cell) => cell.text);
+          .filter((cell) => cell.text && cell.text !== cell.href);
         // The heading is the first cell that reads as a name rather than an address.
         const headingAt = cells.findIndex((cell) => !/^https?:\/\//.test(cell.text));
         cells.forEach((cell, i) => {
