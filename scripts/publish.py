@@ -39,8 +39,10 @@ import sys
 import time
 from pathlib import Path
 
+import requests
 import rohub
 import yaml
+from rohub import settings
 from _rohub import CCA, SCHEMA, annotate, login, pid, retry
 
 PREFIXES = {
@@ -62,6 +64,22 @@ def expand(value: str) -> str:
 
 def pairs(mapping: dict) -> list[tuple[str, str]]:
     return [(expand(k), expand(str(v))) for k, v in (mapping or {}).items()]
+
+
+def already_there(ro_id: str) -> tuple[set[str], set[str]]:
+    """The names and the URLs of the resources the object already carries.
+
+    Re-running a spec should change an object, not grow it: ROHub would happily add a
+    second theme.json beside the first.
+    """
+    url = settings.API_URL + f"ros/{ro_id}/resources/?size=200"
+    headers = {"Authorization": f"{settings.TOKEN_TYPE.capitalize()} {settings.ACCESS_TOKEN}"}
+    try:
+        results = requests.get(url, headers=headers, timeout=60).json().get("results", [])
+    except Exception:                       # noqa: BLE001 - a listing we cannot read adds nothing
+        return set(), set()
+    return ({(r.get("name") or "").lower() for r in results},
+            {(r.get("url") or "").rstrip("/") for r in results})
 
 
 def main() -> int:
@@ -107,10 +125,14 @@ def main() -> int:
         annotate(ro_id, statements)
         print("  wrote", len(statements), "statements")
 
+    names, urls = already_there(ro_id)
     for path, role in files.items():
         source = folder / path
         if not source.exists():
             print("  missing file:", source)
+            continue
+        if source.name.lower() in names:
+            print("  file already there:", source.name)
             continue
         resource = retry(rohub.ros_add_internal_resource, ro_id, res_type="Other",
                          file_path=str(source), title=source.name)
@@ -120,6 +142,9 @@ def main() -> int:
         time.sleep(3)
 
     for item in external:
+        if item["url"].rstrip("/") in urls:
+            print("  link already there:", item["url"])
+            continue
         resource = retry(rohub.ros_add_external_resource, ro_id,
                          res_type=item.get("type", "Other"), input_url=item["url"],
                          title=item.get("title", item["url"]))
