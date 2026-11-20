@@ -544,48 +544,70 @@ async function choicesFor(field, search = "") {
  */
 function templateForm(template, service, object) {
   const form = el("form", { class: "npform" });
-  const values = new Map();
+  const values = new Map();          //: field name -> the values its controls hold
 
-  for (const field of template.fields) {
-    const id = `f-${field.name}`;
-    const row = el("div", { class: "npfield" });
-    row.append(el("label", { for: id },
-      field.asks, field.optional ? el("span", { class: "muted" }, " (optional)") : ""));
-
-    let input;
-    if (field.choice) {
-      input = el("input", { id, list: `${id}-list`, placeholder: field.hint || "start typing to search" });
-      const list = el("datalist", { id: `${id}-list` });
-      const options = new Map();
-      const fill = async (search) => {
-        const found = await choicesFor(field, search);
-        found.forEach((c) => options.set(c.label, c.uri));
-        list.replaceChildren(...found.map((c) => el("option", { value: c.label })));
-      };
-      fill("");
-      let pending;
-      input.addEventListener("input", () => {
-        values.set(field.name, options.get(input.value) || "");
-        if (field.source?.api) { clearTimeout(pending); pending = setTimeout(() => fill(input.value), 350); }
-      });
-      row.append(input, list);
-    } else {
-      input = field.long ? el("textarea", { id, rows: "3" }) : el("input", { id, type: "text" });
+  /** One control for one blank: a line of text, or a search over a published list. */
+  const control = (field, slot) => {
+    const write = (value) => {
+      const list = values.get(field.name) || [];
+      list[slot] = value;
+      values.set(field.name, list);
+    };
+    if (!field.choice) {
+      const input = field.long ? el("textarea", { rows: "2" }) : el("input", { type: "text" });
       if (field.hint) input.setAttribute("placeholder", field.hint);
-      input.addEventListener("input", () => values.set(field.name, input.value.trim()));
-      row.append(input);
+      input.addEventListener("input", () => write(input.value.trim()));
+      return input;
     }
-    form.append(row);
-  }
+    const id = `f-${field.name}-${slot}`;
+    const input = el("input", { id, list: `${id}-list`, placeholder: field.hint || "type to search" });
+    const list = el("datalist", { id: `${id}-list` });
+    const options = new Map();
+    const fill = async (search) => {
+      const found = await choicesFor(field, search);
+      found.forEach((choice) => options.set(choice.label, choice.uri));
+      list.replaceChildren(...found.map((choice) => el("option", { value: choice.label })));
+    };
+    fill("");
+    let pending;
+    input.addEventListener("input", () => {
+      write(options.get(input.value) || "");
+      if (field.source?.api) { clearTimeout(pending); pending = setTimeout(() => fill(input.value), 350); }
+    });
+    return el("span", { class: "npcontrol" }, input, list);
+  };
 
-  const who = el("div", { class: "npfield" },
-    el("label", { for: "f-author" }, "Your name and ORCID", el("span", { class: "muted" }, " (optional)")));
-  const name = el("input", { id: "f-author", type: "text", placeholder: "Your name" });
-  const orcid = el("input", { id: "f-orcid", type: "text", placeholder: "https://orcid.org/0000-0002-1825-0097" });
-  who.append(name, orcid,
-    el("p", { class: "muted" },
-      "Give an ORCID and the statement is attributed to you. Leave it empty and it is published as collected through this form."));
-  form.append(who);
+  // A statement reads as a sentence: the words the template declares, then the blank.
+  const statements = el("div", { class: "npstatements" });
+  for (const field of template.fields) {
+    const row = el("div", { class: "nprow" });
+    row.append(el("span", { class: "npsays" }, field.asks,
+      field.optional ? el("span", { class: "muted" }, " (optional)") : ""));
+    const controls = el("div", { class: "npcontrols" }, control(field, 0));
+    if (field.repeatable) {
+      const more = el("button", { type: "button", class: "npmore", title: "add another" }, "+");
+      more.addEventListener("click", () => controls.insertBefore(control(field, controls.children.length - 1), more));
+      controls.append(more);
+    }
+    row.append(controls);
+    statements.append(row);
+  }
+  form.append(statements);
+
+  // Who stands behind it, and under what terms: the same things Nanodash asks at the end.
+  const name = el("input", { type: "text", placeholder: "Your name" });
+  const orcid = el("input", { type: "text", placeholder: "https://orcid.org/0000-0002-1825-0097" });
+  form.append(el("div", { class: "npstatements npabout" },
+    el("div", { class: "nprow" },
+      el("span", { class: "npsays" }, "is attributed to"),
+      el("div", { class: "npcontrols" }, name, orcid)),
+    el("div", { class: "nprow" },
+      el("span", { class: "npsays" }, "is published under"),
+      el("div", { class: "npcontrols" },
+        el("span", { class: "npfixed" }, "Attribution 4.0 International (CC BY 4.0)")))));
+  form.append(el("p", { class: "muted" },
+    "Give an ORCID and the statement is attributed to you. Leave it empty and it is published " +
+    "as collected through this form."));
 
   const trap = el("input", { type: "text", name: "website", class: "trap", tabindex: "-1", autocomplete: "off" });
   const status = el("p", { class: "muted" });
@@ -593,7 +615,7 @@ function templateForm(template, service, object) {
 
   // Publishing is permanent, and people filling in a form at an event should be told so
   // before they do it, not afterwards.
-  const consent = el("input", { type: "checkbox", id: "f-consent", required: "required" });
+  const consent = el("input", { type: "checkbox", id: "f-consent" });
   const agreed = el("label", { class: "consent", for: "f-consent" }, consent,
     el("span", {}, "I understand that what I publish cannot be removed, only superseded or " +
       "retracted, and that it is public."));
@@ -602,10 +624,14 @@ function templateForm(template, service, object) {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!consent.checked) { status.replaceChildren("tick the box first."); return; }
+    if (!consent.checked) { status.replaceChildren("Tick the box first."); return; }
     button.disabled = true;
     status.replaceChildren("publishing…");
-    const payload = Object.fromEntries([...values].filter(([, v]) => v !== ""));
+    const payload = {};
+    for (const [field, list] of values) {
+      const given = list.filter((value) => value);
+      if (given.length) payload[field] = given.length === 1 ? given[0] : given;
+    }
     payload.authorName = name.value.trim();
     payload.authorOrcid = orcid.value.trim();
     payload.website = trap.value;
@@ -615,7 +641,7 @@ function templateForm(template, service, object) {
       }).then((r) => r.json());
       if (answer.uri) {
         status.replaceChildren("published: ", link(answer.uri));
-        form.querySelectorAll("input, textarea").forEach((f) => { f.value = ""; });
+        form.querySelectorAll("input, textarea").forEach((control) => { control.value = ""; });
         consent.checked = false;
         values.clear();
       } else {

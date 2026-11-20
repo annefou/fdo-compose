@@ -144,18 +144,28 @@ ul.members li { margin-bottom: .6rem; }
        border-radius: 999px; padding: .6rem 1.2rem; font-weight: 600; }
 .cta:hover { background: var(--ink); }
 
-form.npform { margin: .6rem 0 0; max-width: 42rem; }
-.npfield { display: flex; flex-direction: column; gap: .3rem; margin-bottom: 1rem; }
-.npfield label { font-weight: 600; font-size: .92rem; color: var(--primary); }
-.npfield input, .npfield textarea, .npfield select {
-  font: inherit; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 6px;
-  background: #fff; color: var(--ink); width: 100%; }
-.npfield input:focus, .npfield textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.npfield input + input { margin-top: .4rem; }
+form.npform { margin: .8rem 0 0; }
+.npstatements { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px;
+                background: #fbfcfd; padding: .4rem .2rem; margin-bottom: 1rem; }
+.npabout { border-left-color: var(--primary); }
+.nprow { display: grid; grid-template-columns: 11rem 1fr; gap: .6rem 1rem; align-items: start;
+         padding: .5rem .8rem; }
+.nprow + .nprow { border-top: 1px solid #eef2f4; }
+.npsays { font-size: .92rem; color: var(--primary); font-weight: 600; padding-top: .5rem; }
+.npcontrols { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.npcontrols input, .npcontrols textarea {
+  font: inherit; padding: .5rem .7rem; border: 1px solid var(--line); border-radius: 6px;
+  background: #fff; color: var(--ink); flex: 1 1 16rem; min-width: 12rem; }
+.npcontrols input:focus, .npcontrols textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.npcontrol { display: contents; }
+.npfixed { font-size: .9rem; color: var(--muted); padding-top: .5rem; }
+.npmore { border: 1px solid var(--line); background: #fff; color: var(--primary); border-radius: 6px;
+          width: 2rem; height: 2rem; font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.npmore:hover { border-color: var(--primary); }
+@media (max-width: 38rem) { .nprow { grid-template-columns: 1fr; } .npsays { padding-top: 0; } }
 .npform button.cta { border: 0; cursor: pointer; }
 .npform button.cta[disabled] { opacity: .6; cursor: progress; }
 .trap { position: absolute; left: -9999px; width: 1px; height: 1px; }
-
 label.consent { display: flex; gap: .55rem; align-items: flex-start; font-size: .88rem;
                 color: var(--muted); margin: .2rem 0 1rem; cursor: pointer; }
 label.consent input { width: auto; margin-top: .15rem; }
