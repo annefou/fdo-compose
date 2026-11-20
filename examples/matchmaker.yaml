@@ -42,10 +42,16 @@ annotations:
   cca:page4Panel1: cca:TextView
   cca:page4Panel2: cca:MetadataView
   cca:page4Panel3: cca:ResourcesView
+  cca:page5: cca:ContributePage
+  cca:page5Title: Tell us what you need
+  cca:page5Panel1: cca:ContributeView
+  cca:page5Panel1Template: https://w3id.org/np/RACciFqZEUYYrteZnGikqUEV8ZRVYfJNB3bzy98X5s_qw
+  cca:page5Panel1Label: Write your user story
 
 files:
   brand/matchmaker/theme.json: cca:Theme
   brand/matchmaker/notice.md: cca:Notice
+  brand/matchmaker/contribute.md: cca:Contribute
   brand/matchmaker/footer.md: cca:Footer
   brand/matchmaker/background.jpg: cca:BackgroundImage
   brand/matchmaker/partner-eosc.png: cca:Partner

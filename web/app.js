@@ -48,6 +48,7 @@ const PANEL_LABELS = {
   MembersView: "In this collection",
   MetadataView: "About this object",
   ResourcesView: "Files and links",
+  ContributeView: "Add yours",
 };
 
 const el = (tag, attrs = {}, ...children) => {
@@ -432,6 +433,43 @@ const prettyColumn = (name) => name
   .replace(/^./, (c) => c.toUpperCase());
 
 /** The sentence a nanopublication states, with who signed it and when. */
+/**
+ * What a nanopublication template asks for: its name, its description, and its questions
+ * in the order the form will put them. Read from the template itself, so a dashboard that
+ * points at a different template says the right thing without a code change.
+ */
+async function readTemplate(uri) {
+  const empty = { name: null, description: null, questions: [] };
+  try {
+    const trig = await fetch(recordUri(uri), { headers: { Accept: "application/trig" } }).then((r) => r.text());
+    const assertion = /sub:assertion\s*\{([\s\S]*?)\n\}/.exec(trig);
+    const body = assertion ? assertion[1] : trig;
+
+    //: the template names the words it will show for each predicate and each blank to fill
+    const labels = new Map([...body.matchAll(
+      /(<[^>]+>|rdfs:label|rdf:type|sub:[\w-]+)[^.;]*?rdfs:label\s+"((?:[^"\\]|\\.)*)"/g)]
+      .map((m) => [m[1], m[2]]));
+    const optional = new Set([...body.matchAll(/sub:(st\d+)\s+a[^;]*nt:OptionalStatement/g)].map((m) => m[1]));
+
+    const questions = [...body.matchAll(
+      /sub:(st\d+)[^.]*?rdf:object\s+([^;]+);\s*rdf:predicate\s+([^;]+);/g)]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([, statement, object, predicate]) => {
+        const asks = labels.get(predicate.trim());
+        const blank = labels.get(object.trim());
+        if (!asks) return null;                        // a fixed statement, nothing to fill in
+        return asks + (blank ? `: ${blank}` : "") + (optional.has(statement) ? " (optional)" : "");
+      })
+      .filter(Boolean);
+
+    const name = /a nt:AssertionTemplate[\s\S]*?rdfs:label\s+"((?:[^"\\]|\\.)*)"/.exec(body);
+    const description = /dct:description\s+"((?:[^"\\]|\\.)*)"/.exec(body);
+    return { name: name ? name[1] : null, description: description ? description[1] : null, questions };
+  } catch {
+    return empty;
+  }
+}
+
 async function readNanopub(uri) {
   try {
     const trig = await fetch(recordUri(uri), { headers: { Accept: "application/trig" } }).then((r) => r.text());
@@ -644,6 +682,29 @@ async function renderPanel(panel, object, into) {
     section.append(el("h2", { class: "hero-title" }, object.name));
     if (object.description) section.append(el("p", { class: "hero-lead" }, plain(object.description)));
     if (currentPage?.searchInHero) section.append(searchBox(object));
+  } else if (panel.kind === "ContributeView") {
+    // Publishing means signing, and a page served from static hosting cannot hold a key.
+    // So the panel says what the form asks and hands over to a service that can sign.
+    const template = panel.settings.template;
+    if (!template) return note("This panel names no template.");
+    const service = panel.settings.service || "https://platform.sciencelive4all.org/np/create?template=";
+    const file = fileFor(object.brand || object, "Contribute", /^contribute\.(md|txt)$/i);
+    const intro = file ? await fetch(file.url).then((r) => r.text()).catch(() => "") : "";
+    const form = await readTemplate(template);
+    if (intro.trim()) section.append(markdown(intro.trim()));
+    else if (form.description) section.append(el("p", { class: "prose" }, form.description));
+    if (form.questions.length) {
+      section.append(el("p", { class: "muted" }, "The form asks for:"),
+        el("ul", { class: "vars" }, form.questions.map((q) => el("li", {}, q))));
+    }
+    section.append(el("p", {}, el("a", {
+      class: "cta", href: service + encodeURIComponent(recordUri(template)),
+      target: "_blank", rel: "noreferrer",
+    }, panel.settings.label || `Write your ${form.name ? form.name.toLowerCase() : "statement"}`)));
+    section.append(el("p", { class: "muted" },
+      "The form opens elsewhere, because publishing means signing and this page holds no key. " +
+      "Signing in there publishes the statement in your own name."));
+    section.append(el("p", { class: "muted" }, "Template: ", link(recordUri(template), form.name || template)));
   } else if (panel.kind === "NoticeView") {
     // The text of a notice is a file in the object (notice.md), so a curator can change it.
     const file = fileFor(object.brand || object, "Notice", /^notice\.(md|txt)$/i);
