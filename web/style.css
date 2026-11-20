@@ -155,3 +155,7 @@ form.npform { margin: .6rem 0 0; max-width: 42rem; }
 .npform button.cta { border: 0; cursor: pointer; }
 .npform button.cta[disabled] { opacity: .6; cursor: progress; }
 .trap { position: absolute; left: -9999px; width: 1px; height: 1px; }
+
+label.consent { display: flex; gap: .55rem; align-items: flex-start; font-size: .88rem;
+                color: var(--muted); margin: .2rem 0 1rem; cursor: pointer; }
+label.consent input { width: auto; margin-top: .15rem; }

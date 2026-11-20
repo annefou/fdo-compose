@@ -590,10 +590,19 @@ function templateForm(template, service, object) {
   const trap = el("input", { type: "text", name: "website", class: "trap", tabindex: "-1", autocomplete: "off" });
   const status = el("p", { class: "muted" });
   const button = el("button", { class: "cta", type: "submit" }, "Publish");
-  form.append(trap, el("p", {}, button), status);
+
+  // Publishing is permanent, and people filling in a form at an event should be told so
+  // before they do it, not afterwards.
+  const consent = el("input", { type: "checkbox", id: "f-consent", required: "required" });
+  const agreed = el("label", { class: "consent", for: "f-consent" }, consent,
+    el("span", {}, "I understand that what I publish cannot be removed, only superseded or " +
+      "retracted, and that it is public."));
+
+  form.append(trap, agreed, el("p", {}, button), status);
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!consent.checked) { status.replaceChildren("tick the box first."); return; }
     button.disabled = true;
     status.replaceChildren("publishing…");
     const payload = Object.fromEntries([...values].filter(([, v]) => v !== ""));
@@ -607,6 +616,7 @@ function templateForm(template, service, object) {
       if (answer.uri) {
         status.replaceChildren("published: ", link(answer.uri));
         form.querySelectorAll("input, textarea").forEach((f) => { f.value = ""; });
+        consent.checked = false;
         values.clear();
       } else {
         status.replaceChildren(answer.error || "the service could not publish this");
