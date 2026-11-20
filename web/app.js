@@ -450,6 +450,8 @@ async function readTemplate(uri) {
       /(<[^>]+>|rdfs:label|rdf:type|sub:[\w-]+)[^.;]*?rdfs:label\s+"((?:[^"\\]|\\.)*)"/g)]
       .map((m) => [m[1], m[2]]));
     const optional = new Set([...body.matchAll(/sub:(st\d+)\s+a[^;]*nt:OptionalStatement/g)].map((m) => m[1]));
+    //: only the blanks are questions; a statement with a fixed object is already answered
+    const blanks = new Set([...body.matchAll(/sub:([\w-]+)\s+a\s+[^.]*?Placeholder/g)].map((m) => `sub:${m[1]}`));
 
     const questions = [...body.matchAll(
       /sub:(st\d+)[^.]*?rdf:object\s+([^;]+);\s*rdf:predicate\s+([^;]+);/g)]
@@ -457,7 +459,7 @@ async function readTemplate(uri) {
       .map(([, statement, object, predicate]) => {
         const asks = labels.get(predicate.trim());
         const blank = labels.get(object.trim());
-        if (!asks) return null;                        // a fixed statement, nothing to fill in
+        if (!asks || !blanks.has(object.trim())) return null;   // nothing left to fill in here
         return asks + (blank ? `: ${blank}` : "") + (optional.has(statement) ? " (optional)" : "");
       })
       .filter(Boolean);
@@ -691,7 +693,7 @@ async function renderPanel(panel, object, into) {
     const file = fileFor(object.brand || object, "Contribute", /^contribute\.(md|txt)$/i);
     const intro = file ? await fetch(file.url).then((r) => r.text()).catch(() => "") : "";
     const form = await readTemplate(template);
-    if (intro.trim()) section.append(markdown(intro.trim()));
+    if (intro.trim()) section.append(el("div", { class: "prose", html: markdown(intro.trim()) }));
     else if (form.description) section.append(el("p", { class: "prose" }, form.description));
     if (form.questions.length) {
       section.append(el("p", { class: "muted" }, "The form asks for:"),
