@@ -287,7 +287,11 @@ function panelsOf(root, prefix) {
     for (const [property, value] of Object.entries(root)) {
       const match = property.startsWith(CCA + key) && property !== CCA + key
         ? property.slice((CCA + key).length) : null;
-      if (match && match !== "Renderer") settings[match[0].toLowerCase() + match.slice(1)] = idOf(value);
+      // A setting written more than once arrives as a list: the last word wins, as elsewhere.
+      if (match && match !== "Renderer") {
+        settings[match[0].toLowerCase() + match.slice(1)] =
+          asList(value).map(idOf).filter((v) => v !== undefined && v !== null).pop();
+      }
     }
     panels.push({ kind: short(kind), renderer: short(one(root, `${CCA}${key}Renderer`)), settings });
   }
@@ -468,7 +472,7 @@ async function readTemplate(uri) {
     const kinds = new Map([...body.matchAll(/sub:([\w-]+)\s+a\s+([^.]*?Placeholder)[^.]*?(?:\.|$)/g)]
       .map(([, blank, rest]) => [`sub:${blank}`, rest]));
     const sources = new Map([...body.matchAll(
-      /sub:([\w-]+)\s+a[\s\S]*?nt:possibleValuesFrom(Api)?\s+(<[^>]+>|"[^"]*"|ns1:[\w-]+)/g)]
+      /sub:([\w-]+)\s+a[^.]*?nt:possibleValuesFrom(Api)?\s+(<[^>]+>|"[^"]*"|ns1:[\w-]+)/g)]
       .map(([, blank, api, source]) => [`sub:${blank}`,
         { api: Boolean(api), from: source.replace(/^[<"]|[>"]$/g, "").replace(/^ns1:/, "http://purl.org/np/") }]));
 
