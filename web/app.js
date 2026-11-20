@@ -521,9 +521,17 @@ async function choicesFor(field, search = "") {
     }
     const trig = await fetch(recordUri(field.source.from).replace("http://purl.org/np/", "https://w3id.org/np/"),
       { headers: { Accept: "application/trig" } }).then((r) => r.text());
+    //: a published list names its terms with prefixes of its own
+    const prefixes = new Map([...trig.matchAll(/@prefix\s+([\w-]*):\s*<([^>]+)>/g)].map((m) => [m[1], m[2]]));
+    const expand = (term) => {
+      const [prefix, rest] = term.split(/:(.*)/);
+      return prefixes.has(prefix) ? prefixes.get(prefix) + rest : term;
+    };
     const assertion = /sub:assertion\s*\{([\s\S]*?)\n\}/.exec(trig);
-    return [...(assertion ? assertion[1] : trig).matchAll(/<([^>]+)>\s+rdfs:label\s+"((?:[^"\\]|\\.)*)"/g)]
-      .map(([, uri, label]) => ({ uri, label }))
+    return [...(assertion ? assertion[1] : trig).matchAll(
+      /(?:<([^>]+)>|([\w-]*:[\w\-.%]+))\s+rdfs:label\s+"((?:[^"\\]|\\.)*)"/g)]
+      .map(([, full, prefixed, label]) => ({ uri: full || expand(prefixed), label }))
+      .filter((c) => c.uri && !c.uri.includes("#"))
       .sort((a, b) => a.label.localeCompare(b.label));
   } catch {
     return [];
