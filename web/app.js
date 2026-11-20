@@ -439,7 +439,7 @@ const prettyColumn = (name) => name
  * points at a different template says the right thing without a code change.
  */
 async function readTemplate(uri) {
-  const empty = { name: null, description: null, questions: [] };
+  const empty = { name: null, description: null, questions: [], fields: [] };
   try {
     const trig = await fetch(recordUri(uri), { headers: { Accept: "application/trig" } }).then((r) => r.text());
     const assertion = /sub:assertion\s*\{([\s\S]*?)\n\}/.exec(trig);
@@ -464,12 +464,148 @@ async function readTemplate(uri) {
       })
       .filter(Boolean);
 
+    //: what each blank is: a line of text, a list to choose from, or a search over published things
+    const kinds = new Map([...body.matchAll(/sub:([\w-]+)\s+a\s+([^.]*?Placeholder)[^.]*?(?:\.|$)/g)]
+      .map(([, blank, rest]) => [`sub:${blank}`, rest]));
+    const sources = new Map([...body.matchAll(
+      /sub:([\w-]+)\s+a[\s\S]*?nt:possibleValuesFrom(Api)?\s+(<[^>]+>|"[^"]*"|ns1:[\w-]+)/g)]
+      .map(([, blank, api, source]) => [`sub:${blank}`,
+        { api: Boolean(api), from: source.replace(/^[<"]|[>"]$/g, "").replace(/^ns1:/, "http://purl.org/np/") }]));
+
+    const fields = [...body.matchAll(
+      /sub:(st\d+)[^.]*?rdf:object\s+([^;]+);\s*rdf:predicate\s+([^;]+);/g)]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([, statement, object, predicate]) => {
+        const blank = object.trim();
+        if (!blanks.has(blank)) return null;
+        const kind = kinds.get(blank) || "";
+        return {
+          name: blank.replace(/^sub:/, ""),
+          asks: labels.get(predicate.trim()) || labels.get(blank) || blank.replace(/^sub:/, ""),
+          hint: labels.get(blank) || "",
+          long: /LongLiteral/.test(kind),
+          choice: /Choice/.test(kind),
+          source: sources.get(blank) || null,
+          optional: optional.has(statement),
+          repeatable: new RegExp(`sub:${statement}\\s+a[^;]*RepeatableStatement`).test(body),
+        };
+      })
+      .filter(Boolean);
+
     const name = /a nt:AssertionTemplate[\s\S]*?rdfs:label\s+"((?:[^"\\]|\\.)*)"/.exec(body);
     const description = /dct:description\s+"((?:[^"\\]|\\.)*)"/.exec(body);
-    return { name: name ? name[1] : null, description: description ? description[1] : null, questions };
+    return {
+      name: name ? name[1] : null,
+      description: description ? description[1] : null,
+      questions, fields,
+    };
   } catch {
     return empty;
   }
+}
+
+/** The things a template offers for one blank: a published list, or a search over published things. */
+async function choicesFor(field, search = "") {
+  if (!field.source) return [];
+  try {
+    if (field.source.api) {
+      const url = field.source.from + (field.source.from.includes("?") ? "&" : "?") + "query=" + encodeURIComponent(search || "a");
+      const rows = await fetch(url, { headers: { Accept: "application/json" } })
+        .then((r) => r.json()).then((d) => d?.results?.bindings || []);
+      return rows.map((row) => ({ uri: row.thing?.value, label: row.label?.value || row.thing?.value }))
+        .filter((c) => c.uri);
+    }
+    const trig = await fetch(recordUri(field.source.from).replace("http://purl.org/np/", "https://w3id.org/np/"),
+      { headers: { Accept: "application/trig" } }).then((r) => r.text());
+    const assertion = /sub:assertion\s*\{([\s\S]*?)\n\}/.exec(trig);
+    return [...(assertion ? assertion[1] : trig).matchAll(/<([^>]+)>\s+rdfs:label\s+"((?:[^"\\]|\\.)*)"/g)]
+      .map(([, uri, label]) => ({ uri, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The form a template describes, posting what it collects to a service that can sign.
+ * The page itself holds no key: it assembles answers and hands them over.
+ */
+function templateForm(template, service, object) {
+  const form = el("form", { class: "npform" });
+  const values = new Map();
+
+  for (const field of template.fields) {
+    const id = `f-${field.name}`;
+    const row = el("div", { class: "npfield" });
+    row.append(el("label", { for: id },
+      field.asks, field.optional ? el("span", { class: "muted" }, " (optional)") : ""));
+
+    let input;
+    if (field.choice) {
+      input = el("input", { id, list: `${id}-list`, placeholder: field.hint || "start typing to search" });
+      const list = el("datalist", { id: `${id}-list` });
+      const options = new Map();
+      const fill = async (search) => {
+        const found = await choicesFor(field, search);
+        found.forEach((c) => options.set(c.label, c.uri));
+        list.replaceChildren(...found.map((c) => el("option", { value: c.label })));
+      };
+      fill("");
+      let pending;
+      input.addEventListener("input", () => {
+        values.set(field.name, options.get(input.value) || "");
+        if (field.source?.api) { clearTimeout(pending); pending = setTimeout(() => fill(input.value), 350); }
+      });
+      row.append(input, list);
+    } else {
+      input = field.long ? el("textarea", { id, rows: "3" }) : el("input", { id, type: "text" });
+      if (field.hint) input.setAttribute("placeholder", field.hint);
+      input.addEventListener("input", () => values.set(field.name, input.value.trim()));
+      row.append(input);
+    }
+    form.append(row);
+  }
+
+  const who = el("div", { class: "npfield" },
+    el("label", { for: "f-author" }, "Your name and ORCID", el("span", { class: "muted" }, " (optional)")));
+  const name = el("input", { id: "f-author", type: "text", placeholder: "Your name" });
+  const orcid = el("input", { id: "f-orcid", type: "text", placeholder: "https://orcid.org/0000-0002-1825-0097" });
+  who.append(name, orcid,
+    el("p", { class: "muted" },
+      "Give an ORCID and the statement is attributed to you. Leave it empty and it is published as collected through this form."));
+  form.append(who);
+
+  const trap = el("input", { type: "text", name: "website", class: "trap", tabindex: "-1", autocomplete: "off" });
+  const status = el("p", { class: "muted" });
+  const button = el("button", { class: "cta", type: "submit" }, "Publish");
+  form.append(trap, el("p", {}, button), status);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    button.disabled = true;
+    status.replaceChildren("publishing…");
+    const payload = Object.fromEntries([...values].filter(([, v]) => v !== ""));
+    payload.authorName = name.value.trim();
+    payload.authorOrcid = orcid.value.trim();
+    payload.website = trap.value;
+    try {
+      const answer = await fetch(service, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      }).then((r) => r.json());
+      if (answer.uri) {
+        status.replaceChildren("published: ", link(answer.uri));
+        form.querySelectorAll("input, textarea").forEach((f) => { f.value = ""; });
+        values.clear();
+      } else {
+        status.replaceChildren(answer.error || "the service could not publish this");
+        button.disabled = false;
+      }
+    } catch (error) {
+      status.replaceChildren(`the service did not answer: ${error.message}`);
+      button.disabled = false;
+    }
+  });
+  return form;
 }
 
 async function readNanopub(uri) {
@@ -689,23 +825,28 @@ async function renderPanel(panel, object, into) {
     // So the panel says what the form asks and hands over to a service that can sign.
     const template = panel.settings.template;
     if (!template) return note("This panel names no template.");
-    const service = panel.settings.service || "https://platform.sciencelive4all.org/np/create?template=";
     const file = fileFor(object.brand || object, "Contribute", /^contribute\.(md|txt)$/i);
     const intro = file ? await fetch(file.url).then((r) => r.text()).catch(() => "") : "";
     const form = await readTemplate(template);
     if (intro.trim()) section.append(el("div", { class: "prose", html: markdown(intro.trim()) }));
     else if (form.description) section.append(el("p", { class: "prose" }, form.description));
-    if (form.questions.length) {
-      section.append(el("p", { class: "muted" }, "The form asks for:"),
-        el("ul", { class: "vars" }, form.questions.map((q) => el("li", {}, q))));
+
+    if (panel.settings.service && form.fields.length) {
+      // The form is here, in this page's own colours; only the signing happens elsewhere.
+      section.append(templateForm(form, panel.settings.service, object));
+    } else {
+      if (form.questions.length) {
+        section.append(el("p", { class: "muted" }, "The form asks for:"),
+          el("ul", { class: "vars" }, form.questions.map((q) => el("li", {}, q))));
+      }
+      const elsewhere = panel.settings.link || "https://nanodash.knowledgepixels.com/publish?template=";
+      section.append(el("p", {}, el("a", {
+        class: "cta", href: elsewhere + encodeURIComponent(recordUri(template)),
+        target: "_blank", rel: "noreferrer",
+      }, panel.settings.label || `Write your ${form.name ? form.name.toLowerCase() : "statement"}`)));
+      section.append(el("p", { class: "muted" },
+        "The form opens elsewhere, because publishing means signing and this page holds no key."));
     }
-    section.append(el("p", {}, el("a", {
-      class: "cta", href: service + encodeURIComponent(recordUri(template)),
-      target: "_blank", rel: "noreferrer",
-    }, panel.settings.label || `Write your ${form.name ? form.name.toLowerCase() : "statement"}`)));
-    section.append(el("p", { class: "muted" },
-      "The form opens elsewhere, because publishing means signing and this page holds no key. " +
-      "Signing in there publishes the statement in your own name."));
     section.append(el("p", { class: "muted" }, "Template: ", link(recordUri(template), form.name || template)));
   } else if (panel.kind === "NoticeView") {
     // The text of a notice is a file in the object (notice.md), so a curator can change it.

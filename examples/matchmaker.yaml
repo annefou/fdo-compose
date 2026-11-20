@@ -47,6 +47,9 @@ annotations:
   cca:page5Panel1: cca:ContributeView
   cca:page5Panel1Template: https://w3id.org/np/RACciFqZEUYYrteZnGikqUEV8ZRVYfJNB3bzy98X5s_qw
   cca:page5Panel1Label: Write your user story
+  # Where the filled-in form is sent to be signed and published. The page cannot sign:
+  # it holds no key. See annefou/np-user-story-service.
+  cca:page5Panel1Service: https://np-user-story.netlify.app/.netlify/functions/user-story
 
 files:
   brand/matchmaker/theme.json: cca:Theme
