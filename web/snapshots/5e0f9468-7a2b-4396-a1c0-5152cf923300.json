@@ -141,7 +141,7 @@
       "contributor": [],
       "name": "FAIR Climate Matchmaker (dashboard composed from FAIR Digital Objects)",
       "description": "A reading of the FAIR Climate Matchmaker space (https://w3id.org/spaces/fairclimatematchmaker) whose arrangement is described by this Research Object: which published queries to run, on which page, and how to show their results. The content is not copied here - each panel runs a grlc query nanopublication against the nanopublication network when the page is opened, so what a visitor reads is whatever the community has published by then. Experimental, FAIR2Adapt.",
-      "contentSize": 951518,
+      "contentSize": 951726,
       "encodingFormat": "application/ld+json",
       "contentUrl": "https://api.rohub.org/api/ros/5e0f9468-7a2b-4396-a1c0-5152cf923300/crate/download/",
       "citeAs": "Fouilloux, Anne. \"FAIR Climate Matchmaker (dashboard composed from FAIR Digital Objects).\" ROHub. Nov 06 ,2026. https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300.",

@@ -185,15 +185,28 @@ const snapshotOf = (uuid) =>
   fetch(`snapshots/${uuid}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 
 /**
- * Ask ROHub for a fresh crate after a copy has been shown. If the object changed, forget
- * the copy and draw the page again; if not, or if ROHub cannot answer, nothing moves.
+ * What a crate says that the page shows: everything but the bookkeeping ROHub changes on
+ * its own (file sizes, dates), so that a copy and a fresh crate compare equal when nothing
+ * a visitor could see has changed.
+ */
+const VOLATILE = new Set(["contentSize", "dateModified", "dateCreated", "datePublished", "sdDatePublished"]);
+const substance = (crate) => JSON.stringify(crate, (key, value) => (VOLATILE.has(key) ? undefined : value));
+
+/**
+ * Ask ROHub for a fresh crate after a copy has been shown, and keep it for the next visit.
+ * The page is never redrawn by itself: someone may be typing in an embedded form. If what
+ * the page shows has changed, a line offers to show the latest instead.
  */
 function refreshInBackground(pid, uuid, shown) {
   fetchCrate(uuid).then((fresh) => {
     remember(pid, fresh);
-    if (JSON.stringify(fresh) === JSON.stringify(shown)) return;
+    if (substance(fresh) === substance(shown)) return;
     crates.delete(pid);
-    if (wanted() === pid) show(pid);
+    if (wanted() !== pid || document.getElementById("updated")) return;
+    const again = el("button", { type: "button", class: "linklike" }, "show the latest");
+    again.addEventListener("click", () => show(pid));
+    document.getElementById("main")?.prepend(
+      el("p", { id: "updated", class: "muted" }, "This page has been updated since it was opened: ", again, "."));
   }).catch(() => { /* the copy stays; the next visit asks again */ });
 }
 
@@ -1097,6 +1110,10 @@ async function renderPanel(panel, object, into) {
       const rowOf = (row) => el("tr", {},
         columns.map((column) => {
           const { text, href, bare } = cellOf(row, column);
+          // A lone check mark (e.g. "curated") is a flag: make it visible and say what it means
+          if (!href && text === "✓") {
+            return el("td", {}, el("span", { class: "tick", title: prettyColumn(column), "aria-label": prettyColumn(column) }, "✓"));
+          }
           if (!href) return el("td", {}, text);
           const anchor = link(href, text);
           return el("td", {}, bare ? nameLater(anchor, href) : anchor);
