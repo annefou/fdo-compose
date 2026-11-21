@@ -41,6 +41,7 @@ dl.meta dd { margin: 0; }
 table.panels { width: 100%; border-collapse: collapse; font-size: .9rem; }
 table.panels th { text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); padding: .35rem .5rem; }
 table.panels td { border-bottom: 1px solid var(--line); padding: .45rem .5rem; vertical-align: top; }
+table.panels tr.qgroup th { color: var(--primary); padding-top: 1rem; border-bottom: 2px solid var(--line); }
 
 iframe.map { width: 100%; height: 32rem; border: 1px solid var(--line); border-radius: 4px; background: #e3eff5; }
 ul.cols { columns: 3 9rem; margin: 0; padding-left: 1.1rem; font-size: .92rem; }

@@ -401,6 +401,17 @@ const QUERY_IRI = /^https?:\/\/w3id\.org\/np\/(RA[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+)
  * nanopublication, and the service answers it over the nanopublication network. The panel
  * names the query by its IRI, so what is displayed is a published, citable question.
  */
+/**
+ * The parameters a query panel passes, from its settings: `cca:page2Panel1QueryParamFip`
+ * becomes `fip`, as Nanodash's `queryparam_fip` does. A published query with a placeholder
+ * then serves one community, one profile or one region without a copy of the query.
+ */
+function queryParameters(settings) {
+  return Object.fromEntries(Object.entries(settings)
+    .filter(([key, value]) => key.startsWith("queryParam") && key.length > 10 && value)
+    .map(([key, value]) => [key[10].toLowerCase() + key.slice(11), value]));
+}
+
 async function runQuery(iri, parameters = {}) {
   const match = QUERY_IRI.exec(iri || "");
   if (!match) throw new Error(`not a published query: ${iri}`);
@@ -1027,7 +1038,7 @@ async function renderPanel(panel, object, into) {
     section.append(el("p", { class: "muted" }, "running the query…"));
     let result;
     try {
-      result = await runQuery(iri);
+      result = await runQuery(iri, queryParameters(panel.settings));
     } catch (error) {
       return section.replaceChildren(el("h2", {}, label || "Query"),
         el("p", { class: "muted" }, String(error.message)));
@@ -1058,15 +1069,29 @@ async function renderPanel(panel, object, into) {
         return card;
       })));
     } else {
-      const head = el("tr", {}, shown.map((c) => el("th", {}, prettyColumn(c))), el("th", {}, "Source"));
-      const body = el("tbody", {}, result.rows.map((row) => el("tr", {},
-        shown.map((column) => {
+      // A column named *_group (e.g. principle_group) heads the rows that share its value,
+      // as Nanodash shows it, rather than repeating on every row.
+      const group = shown.find((c) => c.endsWith("_group"));
+      const columns = shown.filter((c) => c !== group);
+      const head = el("tr", {}, columns.map((c) => el("th", {}, prettyColumn(c))), el("th", {}, "Source"));
+      const rowOf = (row) => el("tr", {},
+        columns.map((column) => {
           const { text, href, bare } = cellOf(row, column);
           if (!href) return el("td", {}, text);
           const anchor = link(href, text);
           return el("td", {}, bare ? nameLater(anchor, href) : anchor);
         }),
-        el("td", {}, row.np ? link(row.np, "nanopub") : ""))));
+        el("td", {}, row.np ? link(row.np, "nanopub") : ""));
+      const rows = [];
+      let current;
+      for (const row of result.rows) {
+        if (group && row[group] !== current) {
+          current = row[group];
+          rows.push(el("tr", { class: "qgroup" }, el("th", { colspan: String(columns.length + 1) }, current || "")));
+        }
+        rows.push(rowOf(row));
+      }
+      const body = el("tbody", {}, rows);
       section.append(el("div", { class: "qtable" }, el("table", { class: "panels" }, el("thead", {}, head), body)));
     }
     note(`${result.rows.length} ${result.rows.length === 1 ? "result" : "results"}, read live from the nanopublication network · ${iri.split("/").pop()}`);
