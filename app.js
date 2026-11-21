@@ -1,0 +1,1452 @@
+/**
+ * Reads a FAIR Digital Object from ROHub and renders the dashboard it describes.
+ *
+ * Nothing is generated ahead of time: the page fetches the RO-Crate ROHub serves
+ * for a PID, reads the dashboard terms from it and draws the pages. Change the
+ * object in ROHub, reload, and the dashboard changes.
+ *
+ * The vocabulary is the draft dashboard profile (cca-dashboard-0.1), the same map
+ * fdo-consume uses on the publishing side.
+ */
+
+const CCA = "https://w3id.org/ro/terms/cca/";
+const SCHEMA = "https://schema.org/";
+const CRATE = (uuid) => `https://api.rohub.org/api/ros/${uuid}/crate/download/`;
+const VIEWER = "https://f2a.plan4all.eu/#";
+const EMBED = "https://platform.sciencelive4all.org/embed/view?uri=";
+const RO_PID = /^https:\/\/w3id\.org\/ro-id\/([0-9a-f-]{36})$/;
+
+/** The viewer reads its settings after "::" in the hash. */
+const VIEWER_SETTINGS = { colormap: "colormap", variable: "varname", invert: "invertcolormap",
+                          min: "boundlow", max: "boundhigh", projection: "projection" };
+
+function viewerUrl(store, settings = {}) {
+  const params = new URLSearchParams();
+  for (const [name, value] of Object.entries(settings)) {
+    const key = VIEWER_SETTINGS[name.toLowerCase()];
+    if (key && value) params.set(key, value);
+  }
+  const query = params.toString();
+  return VIEWER + store + (query ? "::" + query : "");
+}
+
+const PANEL_LABELS = {
+  HeroView: "",
+  NoticeView: "",
+  AskView: "",
+  QueryView: "",
+  TopicsView: "Explore resources by topic",
+  CategoriesView: "Browse our resources",
+  PartnersView: "",
+  TextView: "About",
+  StatsView: "In numbers",
+  LinksView: "Where to go next",
+  EmbedView: "Service",
+  MapView: "Map",
+  VariablesView: "Variables",
+  ClaimsView: "Claims",
+  MembersView: "In this collection",
+  MetadataView: "About this object",
+  ResourcesView: "Files and links",
+  ContributeView: "Add yours",
+};
+
+const el = (tag, attrs = {}, ...children) => {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null) continue;
+    if (k === "class") node.className = v;
+    else if (k === "html") node.innerHTML = v;
+    else node.setAttribute(k, v);
+  }
+  for (const child of children.flat()) {
+    if (child === null || child === undefined) continue;
+    node.append(child.nodeType ? child : document.createTextNode(child));
+  }
+  return node;
+};
+
+const short = (iri) => (iri || "").replace(/\/$/, "").split("/").pop();
+
+const escapeHtml = (text) => String(text)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/**
+ * ROHub descriptions are written in Markdown. This renders the part of it that appears
+ * there - headings, emphasis, code, links and lists - after escaping the text, so nothing
+ * a record states can inject markup.
+ */
+function markdown(text) {
+  const inline = (line) => escapeHtml(line)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+
+  const html = [];
+  let list = false;
+  const closeList = () => { if (list) { html.push("</ul>"); list = false; } };
+
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) { closeList(); continue; }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      closeList();
+      const level = Math.min(heading[1].length + 2, 6);
+      html.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+      continue;
+    }
+    const item = /^[-*]\s+(.*)$/.exec(line);
+    if (item) {
+      if (!list) { html.push("<ul>"); list = true; }
+      html.push(`<li>${inline(item[1])}</li>`);
+      continue;
+    }
+    closeList();
+    html.push(`<p>${inline(line)}</p>`);
+  }
+  closeList();
+  return html.join("");
+}
+
+/** The same text with the Markdown taken out, for a one-line summary. */
+const plain = (text) => String(text || "")
+  .replace(/^#{1,6}\s+/gm, "").replace(/[*_`]/g, "")
+  .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\s+/g, " ").trim();
+const idOf = (value) => (value && typeof value === "object" ? value["@id"] : value);
+const asList = (value) => (value === undefined ? [] : Array.isArray(value) ? value : [value]);
+
+/** Every value an entity states for a term, whether the crate compacted the key or not. */
+function term(entity, iri) {
+  const compact = iri.startsWith(SCHEMA) ? iri.slice(SCHEMA.length) : null;
+  const values = [...asList(entity[iri]), ...(compact ? asList(entity[compact]) : [])];
+  return values.map(idOf).filter((v) => v !== undefined && v !== null);
+}
+/**
+ * The value an object states for a term. ROHub annotations are append-only and a fork
+ * inherits its parent's, so the way to change a statement is to add a newer one: the
+ * last value wins. (Override semantics belong in the profile; this is the reading that
+ * makes editing possible today.)
+ */
+const one = (entity, iri) => {
+  const values = term(entity, iri);
+  return values[values.length - 1];
+};
+
+const crates = new Map();
+
+function objectOf(pid) {
+  if (!crates.has(pid)) crates.set(pid, crateOf(pid).then(readObject));
+  return crates.get(pid);
+}
+
+/** ROHub takes several seconds to generate a crate, so one visit reads each object once. */
+function remember(pid, crate) {
+  const kept = JSON.stringify({ at: Date.now(), crate });
+  // The session copy spares ROHub repeated reads; the lasting copy is what the page falls
+  // back on when ROHub cannot answer, so a slow or failing ROHub never blanks the page.
+  try { sessionStorage.setItem("crate:" + pid, kept); } catch { /* full or disabled */ }
+  try { localStorage.setItem("crate:" + pid, kept); } catch { /* full or disabled */ }
+}
+
+function remembered(pid, store = sessionStorage, maxAge = 30 * 60 * 1000) {
+  try {
+    const kept = JSON.parse(store.getItem("crate:" + pid) || "null");
+    if (kept && Date.now() - kept.at < maxAge) return kept.crate;
+  } catch { /* unreadable store */ }
+  return null;
+}
+
+
+/** Ask ROHub, twice, each time giving up after `ms`: a gateway timeout takes 30s to say so */
+async function fetchCrate(uuid, attempts = 2, ms = 20000) {
+  let last;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+      const response = await fetch(CRATE(uuid), { signal: controller.signal });
+      if (response.ok) return await response.json();
+      last = new Error(`ROHub returned ${response.status}`);
+    } catch (error) {
+      last = error.name === "AbortError" ? new Error("ROHub did not answer in time") : error;
+    } finally {
+      clearTimeout(timer);
+    }
+    if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
+  }
+  throw last;
+}
+
+/** The snapshot of an object published with the viewer, if there is one */
+const snapshotOf = (uuid) =>
+  fetch(`snapshots/${uuid}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+/**
+ * What a crate says that the page shows: everything but the bookkeeping ROHub changes on
+ * its own (file sizes, dates), so that a copy and a fresh crate compare equal when nothing
+ * a visitor could see has changed.
+ */
+const VOLATILE = new Set(["contentSize", "dateModified", "dateCreated", "datePublished", "sdDatePublished"]);
+const substance = (crate) => JSON.stringify(crate, (key, value) => (VOLATILE.has(key) ? undefined : value));
+
+/**
+ * Ask ROHub for a fresh crate after a copy has been shown, and keep it for the next visit.
+ * The page is never redrawn by itself: someone may be typing in an embedded form. If what
+ * the page shows has changed, a line offers to show the latest instead.
+ */
+function refreshInBackground(pid, uuid, shown) {
+  fetchCrate(uuid).then((fresh) => {
+    remember(pid, fresh);
+    if (substance(fresh) === substance(shown)) return;
+    crates.delete(pid);
+    if (wanted() !== pid || document.getElementById("updated")) return;
+    const again = el("button", { type: "button", class: "linklike" }, "show the latest");
+    again.addEventListener("click", () => show(pid));
+    document.getElementById("main")?.prepend(
+      el("p", { id: "updated", class: "muted" }, "This page has been updated since it was opened: ", again, "."));
+  }).catch(() => { /* the copy stays; the next visit asks again */ });
+}
+
+async function crateOf(pid) {
+  const match = RO_PID.exec(pid.trim());
+  if (!match) throw new Error(`not a ROHub PID: ${pid}`);
+  // Read in this session already: ROHub need not be asked again
+  let crate = remembered(pid);
+  if (!crate) {
+    // A copy this browser read before, or the snapshot published with the viewer, is shown
+    // at once: ROHub can take half a minute to build a crate, and a page should not wait
+    // for it. ROHub is asked in the background and the page follows if anything changed.
+    const copy = remembered(pid, localStorage, Infinity) || await snapshotOf(match[1]);
+    if (copy) {
+      crate = copy;
+      refreshInBackground(pid, match[1], copy);
+    } else {
+      try {
+        crate = await fetchCrate(match[1]);
+        remember(pid, crate);
+      } catch (error) {
+        throw new Error(`ROHub could not be reached (${error.message}); try again in a minute`);
+      }
+    }
+  }
+  const graph = crate["@graph"] || [];
+  const root = graph.find((e) => e["@id"] === "./") || {};
+  return { pid, root, graph };
+}
+
+/**
+ * The resources of an object. ROHub puts files inside folders, which are themselves parts
+ * of the crate, so this walks hasPart and keeps the leaves: the folders are the structure,
+ * the files are what a dashboard can show.
+ */
+function resources({ root, graph }) {
+  const byId = new Map(graph.map((e) => [e["@id"], e]));
+  const found = [];
+  const seen = new Set();
+
+  const walk = (id, depth) => {
+    if (depth > 4 || seen.has(id)) return;
+    seen.add(id);
+    const entity = byId.get(id);
+    if (!entity) return;
+    const children = term(entity, SCHEMA + "hasPart");
+    if (children.length) {
+      children.forEach((child) => walk(child, depth + 1));
+      return;                       // a folder is structure, not a resource to show
+    }
+    found.push({
+      id,
+      name: entity.name || id,
+      url: one(entity, SCHEMA + "contentUrl") || id,
+      mediaType: one(entity, SCHEMA + "encodingFormat"),
+      role: one(entity, SCHEMA + "additionalType"),
+    });
+  };
+
+  term(root, SCHEMA + "hasPart").forEach((id) => walk(id, 0));
+  return found;
+}
+
+/** What the object says it is, and what it shows: the dashboard's own statements. */
+function readObject(fetched) {
+  const { pid, root } = fetched;
+  const parts = resources(fetched);
+  const type = term(root, SCHEMA + "additionalType").map(short);
+
+  const pages = [];
+  for (let n = 1; n <= 9; n += 1) {
+    const kind = one(root, `${CCA}page${n}`);
+    if (!kind || kind.endsWith("Hidden")) continue;   // a later annotation can withdraw a page
+    pages.push({
+      kind: short(kind),
+      title: one(root, `${CCA}page${n}Title`) || PANEL_LABELS[short(kind)] || short(kind),
+      panels: panelsOf(root, `page${n}`),
+    });
+  }
+  const loose = panelsOf(root, "");
+  if (!pages.length && loose.length) pages.push({ kind: "Page", title: "Dashboard", panels: loose });
+
+  const marked = parts.find((p) => (p.role || "").endsWith("InputDataset"))?.url;
+  const members = parts.filter((p) => RO_PID.test(p.url) && !(p.role || "").endsWith("Member"));
+  // A dashboard bound to one object: the marked resource, what the root states, or - so that a
+  // swap made by hand in ROHub still works - a single Research Object among the resources.
+  const input = marked || one(root, SCHEMA + "object") || (members.length === 1 ? members[0].url : null);
+
+  const iadopt = fetched.graph
+    .filter((e) => asList(e["@type"]).some((t) => String(t).includes("iadopt/ont/Variable")))
+    .map((e) => ({
+      iri: (e["@id"] || "").replace(/^https:\/\/ror\.org\//, ""),
+      label: e["rdfs:label"] || e.label || e.name,
+    }))
+    .filter((v) => v.label);
+
+  const subjects = fetched.graph
+    .filter((e) => {
+      const types = asList(e["@type"]).map(String);
+      return types.some((t) => t.endsWith("DefinedTerm") || t.endsWith("#FieldOfResearch"));
+    })
+    .map((e) => e.name).filter(Boolean);
+
+  const keywords = [...asList(root.keywords), ...asList(root["https://schema.org/keywords"])]
+    .flatMap((k) => String(idOf(k) || "").split(/\s*[,;]\s*/))
+    .map((k) => k.trim()).filter((k) => k && k.length < 40);
+
+  return {
+    pid,
+    iadopt,
+    keywords: [...new Set([...keywords, ...subjects])],
+    roTypes: asList(root["@type"]).map((t) => String(t)),
+    name: root.name || pid,
+    description: root.description || "",
+    licence: idOf(root.license),
+    profile: idOf(root.conformsTo) || one(root, "http://purl.org/dc/terms/conformsTo"),
+    type,
+    accepts: one(root, CCA + "accepts"),
+    colour: one(root, CCA + "primaryColorHex"),
+    //: dashboard FDOs offered for the members of this collection; each says what it accepts
+    memberDashboards: term(root, CCA + "memberDashboard"),
+    //: a dashboard this object asks to be shown with, whatever collection it is opened from
+    ownDashboard: one(root, CCA + "dashboard"),
+
+    members: parts.filter((p) => RO_PID.test(p.url) && p.url !== marked).map((p) => p.url),
+    claims: parts.filter((p) => p.url.includes("/np/")).map((p) => p.url),
+    stacUrl: parts.find((p) => p.mediaType === "application/geo+json")?.url,
+    storeUrl: parts.find((p) => p.mediaType === "application/vnd+zarr")?.url,
+    parts,
+    pages,
+    input,
+    isDashboard: type.includes("Dashboard"),
+  };
+}
+
+function panelsOf(root, prefix) {
+  const panels = [];
+  for (let n = 1; n <= 9; n += 1) {
+    const key = prefix ? `${prefix}Panel${n}` : `panel${n}`;
+    const kind = one(root, CCA + key);
+    if (!kind) continue;
+    const settings = {};
+    for (const [property, value] of Object.entries(root)) {
+      const match = property.startsWith(CCA + key) && property !== CCA + key
+        ? property.slice((CCA + key).length) : null;
+      // A setting written more than once arrives as a list: the last word wins, as elsewhere.
+      if (match && match !== "Renderer") {
+        settings[match[0].toLowerCase() + match.slice(1)] =
+          asList(value).map(idOf).filter((v) => v !== undefined && v !== null).pop();
+      }
+    }
+    panels.push({ kind: short(kind), renderer: short(one(root, `${CCA}${key}Renderer`)), settings });
+  }
+  return panels;
+}
+
+/** Every member of a collection, read once and kept. */
+async function readMembers(object) {
+  if (!object.membersRead) {
+    object.membersRead = Promise.all(object.members.map((pid) => objectOf(pid).catch(() => null)))
+      .then((list) => list.filter(Boolean));
+  }
+  return object.membersRead;
+}
+
+/** The kind of object, by the last part of the type IRI the crate states. */
+const TYPE_LABELS = {
+  BibliographyResearchObject: "Publications",
+  BibliographyCentricResearchObject: "Publications",
+  Publication: "Publications",
+  ExecutableResearchObject: "Workflows",
+  GeospatialDataset: "Datasets",
+  Dashboard: "Dashboards",
+  ResearchObject: "Research objects",
+};
+
+const KIND_ICONS = {
+  Publications: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5l3 3v10h-8z" fill="none" stroke="currentColor"/><path d="M9 1.5v3h3M5.5 8h5M5.5 10.5h5" fill="none" stroke="currentColor"/></svg>',
+  Datasets: '<svg viewBox="0 0 16 16" aria-hidden="true"><ellipse cx="8" cy="4" rx="5" ry="2" fill="none" stroke="currentColor"/><path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2" fill="none" stroke="currentColor"/></svg>',
+  Workflows: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="5" height="3.5" fill="none" stroke="currentColor"/><rect x="9.5" y="9.5" width="5" height="3.5" fill="none" stroke="currentColor"/><path d="M6.5 4.3h4c.8 0 1.5.7 1.5 1.5v3.7" fill="none" stroke="currentColor"/></svg>',
+  Dashboards: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="9" fill="none" stroke="currentColor"/><path d="M6 14h4M8 11.5V14" fill="none" stroke="currentColor"/></svg>',
+  "Research objects": '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.8 5.5 3v6.4L8 14.2l-5.5-3V4.8z" fill="none" stroke="currentColor"/><path d="m2.5 4.8 5.5 3 5.5-3M8 7.8v6.4" fill="none" stroke="currentColor"/></svg>',
+  "Other objects": '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor"/></svg>',
+};
+
+function kindIcon(object) {
+  const kind = kindOf(object);
+  const svg = KIND_ICONS[kind] || KIND_ICONS["Other objects"];
+  return el("span", { class: "kindicon", title: kind.replace(/s$/, ""), html: svg });
+}
+
+/**
+ * The kind of an object, judged by the most specific type it states. A ROHub crate types a
+ * research object several times over - Dataset, ResearchObject, ExecutableResearchObject -
+ * so the order of the list says nothing; and an object that carries data a map can draw is a
+ * dataset whatever else it calls itself.
+ */
+// "Dataset" is not in this list on purpose: the root of every RO-Crate is typed Dataset,
+// which says how the crate is structured, not what the object is.
+const TYPE_PRIORITY = [
+  "GeospatialDataset", "BibliographyResearchObject", "BibliographyCentricResearchObject",
+  "Publication", "ExecutableResearchObject", "Dashboard", "ResearchObject",
+];
+
+function kindOf(object) {
+  if (object.storeUrl || object.iadopt?.length) return "Datasets";
+  const names = new Set([...object.type, ...(object.roTypes || [])]
+    .map((t) => short(String(t).split("#").pop())));
+  const match = TYPE_PRIORITY.find((name) => names.has(name) && TYPE_LABELS[name]);
+  return TYPE_LABELS[match] || "Other objects";
+}
+
+/**
+ * The record of a nanopublication, wherever a crate points at it. A
+ * w3id.org/sciencelive/np/<id> address serves the platform's web page rather than the
+ * record, so the record is read from w3id.org/np/<id>; both name the same nanopublication.
+ */
+const recordUri = (uri) => uri.replace(/^https:\/\/w3id\.org\/[a-z0-9-]+\/np\//, "https://w3id.org/np/");
+
+const QUERY_API = "https://query.knowledgepixels.com/api/";
+const QUERY_IRI = /^https?:\/\/w3id\.org\/np\/(RA[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+)$/;
+
+/**
+ * Run a published query: a Nanodash space states each of its views as a grlc query
+ * nanopublication, and the service answers it over the nanopublication network. The panel
+ * names the query by its IRI, so what is displayed is a published, citable question.
+ */
+/**
+ * The parameters a query panel passes, from its settings: `cca:page2Panel1QueryParamFip`
+ * becomes `fip`, as Nanodash's `queryparam_fip` does. A published query with a placeholder
+ * then serves one community, one profile or one region without a copy of the query.
+ */
+function queryParameters(settings) {
+  return Object.fromEntries(Object.entries(settings)
+    .filter(([key, value]) => key.startsWith("queryParam") && key.length > 10 && value)
+    .map(([key, value]) => [key[10].toLowerCase() + key.slice(11), value]));
+}
+
+async function runQuery(iri, parameters = {}) {
+  const match = QUERY_IRI.exec(iri || "");
+  if (!match) throw new Error(`not a published query: ${iri}`);
+  const url = new URL(QUERY_API + match[1]);
+  Object.entries(parameters).forEach(([k, v]) => url.searchParams.set(k, v));
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`the query service answered ${response.status}`);
+  const payload = await response.json();
+  return {
+    columns: payload.head?.vars || [],
+    rows: (payload.results?.bindings || []).map((row) =>
+      Object.fromEntries(Object.entries(row).map(([k, v]) => [k, v.value]))),
+  };
+}
+
+/**
+ * Nanodash's column conventions: a column X with a sibling X_label shows the label and
+ * links to the IRI; a name ending in _multi or _multi_iri holds several values; np is the
+ * nanopublication the row came from.
+ */
+function queryColumns(columns) {
+  // A label column is not shown on its own: it is the text of the column it belongs to.
+  const isLabel = (c) => c.endsWith("_label") || c.endsWith("_label_multi")
+    || c.endsWith("_label_multi_iri");
+  const shown = columns.filter((c) => c !== "np" && c !== "np_label" && c !== "date" && !isLabel(c));
+  return { shown };
+}
+
+/**
+ * A readable name for an address. Nanodash never shows a bare IRI: when a query gives no
+ * label, the last part of the address is used (Metadata-schema becomes "Metadata schema"),
+ * and for a nanopublication the label it states is fetched and put in its place.
+ */
+function nameOf(iri) {
+  const tail = String(iri).replace(/[/#]$/, "").split(/[/#]/).pop() || iri;
+  return decodeURIComponent(tail).replace(/[-_]+/g, " ").trim() || iri;
+}
+
+const npLabels = new Map();
+
+/** Replace the text of a link with the label its nanopublication states, when it has one. */
+function nameLater(anchor, iri) {
+  if (!/\/np\//.test(iri)) return anchor;
+  if (!npLabels.has(iri)) npLabels.set(iri, readNanopub(iri).then((np) => np.text || null));
+  npLabels.get(iri).then((label) => {
+    if (label) anchor.textContent = label.length > 90 ? label.slice(0, 90) + "…" : label;
+  }).catch(() => {});
+  return anchor;
+}
+
+/** What a cell shows: the label of the value when the query provides one. */
+function cellOf(row, column) {
+  // _multi columns hold several values separated by spaces; the first is enough for a cell,
+  // and the rest are shown after it.
+  const base = column.replace(/_multi_iri$|_multi$|_iri$/, "");
+  const text = row[`${column}_label`] || row[`${base}_label`] || row[`${base}_label_multi`]
+    || row[`${base}_label_multi_iri`] || row[column] || "";
+  const value = row[column] || "";
+  const href = /^https?:\/\//.test(value) ? value : null;
+  // A value that is only an address gets a name: its last part, or the nanopublication's label.
+  return { text: href && text === value ? nameOf(value) : text, href, bare: Boolean(href) && text === value };
+}
+
+const prettyColumn = (name) => name
+  .replace(/_multi_iri$|_multi$|_iri$/, "").replace(/_/g, " ")
+  .replace(/^./, (c) => c.toUpperCase());
+
+/** The sentence a nanopublication states, with who signed it and when. */
+/**
+ * What a nanopublication template asks for: its name, its description, and its questions
+ * in the order the form will put them. Read from the template itself, so a dashboard that
+ * points at a different template says the right thing without a code change.
+ */
+async function readTemplate(uri) {
+  const empty = { name: null, description: null, questions: [], fields: [] };
+  try {
+    const trig = await fetch(recordUri(uri), { headers: { Accept: "application/trig" } }).then((r) => r.text());
+    const assertion = /sub:assertion\s*\{([\s\S]*?)\n\}/.exec(trig);
+    const body = assertion ? assertion[1] : trig;
+
+    //: the template names the words it will show for each predicate and each blank to fill
+    const labels = new Map([...body.matchAll(
+      /(<[^>]+>|rdfs:label|rdf:type|sub:[\w-]+)[^.;]*?rdfs:label\s+"((?:[^"\\]|\\.)*)"/g)]
+      .map((m) => [m[1], m[2]]));
+    const optional = new Set([...body.matchAll(/sub:(st\d+)\s+a[^;]*nt:OptionalStatement/g)].map((m) => m[1]));
+    //: only the blanks are questions; a statement with a fixed object is already answered
+    const blanks = new Set([...body.matchAll(/sub:([\w-]+)\s+a\s+[^.]*?Placeholder/g)].map((m) => `sub:${m[1]}`));
+
+    const questions = [...body.matchAll(
+      /sub:(st\d+)[^.]*?rdf:object\s+([^;]+);\s*rdf:predicate\s+([^;]+);/g)]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([, statement, object, predicate]) => {
+        const asks = labels.get(predicate.trim());
+        const blank = labels.get(object.trim());
+        if (!asks || !blanks.has(object.trim())) return null;   // nothing left to fill in here
+        return asks + (blank ? `: ${blank}` : "") + (optional.has(statement) ? " (optional)" : "");
+      })
+      .filter(Boolean);
+
+    //: what each blank is: a line of text, a list to choose from, or a search over published things
+    const kinds = new Map([...body.matchAll(/sub:([\w-]+)\s+a\s+([^.]*?Placeholder)[^.]*?(?:\.|$)/g)]
+      .map(([, blank, rest]) => [`sub:${blank}`, rest]));
+    const sources = new Map([...body.matchAll(
+      /sub:([\w-]+)\s+a[^.]*?nt:possibleValuesFrom(Api)?\s+(<[^>]+>|"[^"]*"|ns1:[\w-]+)/g)]
+      .map(([, blank, api, source]) => [`sub:${blank}`,
+        { api: Boolean(api), from: source.replace(/^[<"]|[>"]$/g, "").replace(/^ns1:/, "http://purl.org/np/") }]));
+
+    const fields = [...body.matchAll(
+      /sub:(st\d+)[^.]*?rdf:object\s+([^;]+);\s*rdf:predicate\s+([^;]+);/g)]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([, statement, object, predicate]) => {
+        const blank = object.trim();
+        if (!blanks.has(blank)) return null;
+        const kind = kinds.get(blank) || "";
+        return {
+          name: blank.replace(/^sub:/, ""),
+          asks: labels.get(predicate.trim()) || labels.get(blank) || blank.replace(/^sub:/, ""),
+          hint: labels.get(blank) || "",
+          long: /LongLiteral/.test(kind),
+          choice: /Choice/.test(kind),
+          source: sources.get(blank) || null,
+          optional: optional.has(statement),
+          repeatable: new RegExp(`sub:${statement}\\s+a[^;]*RepeatableStatement`).test(body),
+        };
+      })
+      .filter(Boolean);
+
+    const name = /a nt:AssertionTemplate[\s\S]*?rdfs:label\s+"((?:[^"\\]|\\.)*)"/.exec(body);
+    const description = /dct:description\s+"((?:[^"\\]|\\.)*)"/.exec(body);
+    return {
+      name: name ? name[1] : null,
+      description: description ? description[1] : null,
+      questions, fields,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/** The things a template offers for one blank: a published list, or a search over published things. */
+async function choicesFor(field, search = "") {
+  if (!field.source) return [];
+  try {
+    if (field.source.api) {
+      const url = field.source.from + (field.source.from.includes("?") ? "&" : "?") + "query=" + encodeURIComponent(search || "a");
+      const rows = await fetch(url, { headers: { Accept: "application/json" } })
+        .then((r) => r.json()).then((d) => d?.results?.bindings || []);
+      return rows.map((row) => ({ uri: row.thing?.value, label: row.label?.value || row.thing?.value }))
+        .filter((c) => c.uri);
+    }
+    const trig = await fetch(recordUri(field.source.from).replace("http://purl.org/np/", "https://w3id.org/np/"),
+      { headers: { Accept: "application/trig" } }).then((r) => r.text());
+    //: a published list names its terms with prefixes of its own
+    const prefixes = new Map([...trig.matchAll(/@prefix\s+([\w-]*):\s*<([^>]+)>/g)].map((m) => [m[1], m[2]]));
+    const expand = (term) => {
+      const [prefix, rest] = term.split(/:(.*)/);
+      return prefixes.has(prefix) ? prefixes.get(prefix) + rest : term;
+    };
+    const assertion = /sub:assertion\s*\{([\s\S]*?)\n\}/.exec(trig);
+    return [...(assertion ? assertion[1] : trig).matchAll(
+      /(?:<([^>]+)>|([\w-]*:[\w\-.%]+))\s+rdfs:label\s+"((?:[^"\\]|\\.)*)"/g)]
+      .map(([, full, prefixed, label]) => ({ uri: full || expand(prefixed), label }))
+      .filter((c) => c.uri && !c.uri.includes("#"))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The form a template describes, posting what it collects to a service that can sign.
+ * The page itself holds no key: it assembles answers and hands them over.
+ */
+function templateForm(template, service, object) {
+  const form = el("form", { class: "npform" });
+  const values = new Map();          //: field name -> the values its controls hold
+
+  /** One control for one blank: a line of text, or a search over a published list. */
+  const control = (field, slot) => {
+    const write = (value) => {
+      const list = values.get(field.name) || [];
+      list[slot] = value;
+      values.set(field.name, list);
+    };
+    if (!field.choice) {
+      const input = field.long ? el("textarea", { rows: "2" }) : el("input", { type: "text" });
+      if (field.hint) input.setAttribute("placeholder", field.hint);
+      input.addEventListener("input", () => write(input.value.trim()));
+      return input;
+    }
+    const id = `f-${field.name}-${slot}`;
+    const input = el("input", { id, list: `${id}-list`, placeholder: field.hint || "type to search" });
+    const list = el("datalist", { id: `${id}-list` });
+    const options = new Map();
+    const fill = async (search) => {
+      const found = await choicesFor(field, search);
+      found.forEach((choice) => options.set(choice.label, choice.uri));
+      list.replaceChildren(...found.map((choice) => el("option", { value: choice.label })));
+    };
+    fill("");
+    let pending;
+    input.addEventListener("input", () => {
+      write(options.get(input.value) || "");
+      if (field.source?.api) { clearTimeout(pending); pending = setTimeout(() => fill(input.value), 350); }
+    });
+    return el("span", { class: "npcontrol" }, input, list);
+  };
+
+  // A statement reads as a sentence: the words the template declares, then the blank.
+  const statements = el("div", { class: "npstatements" });
+
+  // Every published story carries a short name of its own, which becomes part of its
+  // address, so the form asks for one rather than inventing it.
+  const shortName = el("input", { type: "text", placeholder: "F2A-MM-US1" });
+  shortName.addEventListener("input", () => values.set("id", [shortName.value.trim()]));
+  statements.append(el("div", { class: "nprow" },
+    el("span", { class: "npsays" }, "short name"),
+    el("div", { class: "npcontrols" }, shortName,
+      el("span", { class: "npfixed" }, "used in its address; letters, digits and dashes"))));
+  for (const field of template.fields) {
+    const row = el("div", { class: "nprow" });
+    row.append(el("span", { class: "npsays" }, field.asks,
+      field.optional ? el("span", { class: "muted" }, " (optional)") : ""));
+    const controls = el("div", { class: "npcontrols" }, control(field, 0));
+    if (field.repeatable) {
+      const more = el("button", { type: "button", class: "npmore", title: "add another" }, "+");
+      more.addEventListener("click", () => controls.insertBefore(control(field, controls.children.length - 1), more));
+      controls.append(more);
+    }
+    row.append(controls);
+    statements.append(row);
+  }
+  form.append(statements);
+
+  // Who stands behind it, and under what terms: the same things Nanodash asks at the end.
+  const name = el("input", { type: "text", placeholder: "Your name" });
+  const orcid = el("input", { type: "text", placeholder: "https://orcid.org/0000-0002-1825-0097" });
+  form.append(el("div", { class: "npstatements npabout" },
+    el("div", { class: "nprow" },
+      el("span", { class: "npsays" }, "is attributed to"),
+      el("div", { class: "npcontrols" }, name, orcid)),
+    el("div", { class: "nprow" },
+      el("span", { class: "npsays" }, "is published under"),
+      el("div", { class: "npcontrols" },
+        el("span", { class: "npfixed" }, "Attribution 4.0 International (CC BY 4.0)")))));
+  form.append(el("p", { class: "muted" },
+    "Give an ORCID and the statement is attributed to you. Leave it empty and it is published " +
+    "as collected through this form."));
+
+  const trap = el("input", { type: "text", name: "website", class: "trap", tabindex: "-1", autocomplete: "off" });
+  const status = el("p", { class: "muted" });
+  const button = el("button", { class: "cta", type: "submit" }, "Publish");
+
+  // Publishing is permanent, and people filling in a form at an event should be told so
+  // before they do it, not afterwards.
+  const consent = el("input", { type: "checkbox", id: "f-consent" });
+  const agreed = el("label", { class: "consent", for: "f-consent" }, consent,
+    el("span", {}, "I understand that what I publish cannot be removed, only superseded or " +
+      "retracted, and that it is public."));
+
+  // A trial run still goes on the network, so it says in the publication that it is one.
+  const example = el("input", { type: "checkbox", id: "f-example" });
+  const marked = el("label", { class: "consent", for: "f-example" }, example,
+    el("span", {}, "This is a test. Mark it as an example, so nobody mistakes it for a real need."));
+
+  form.append(trap, agreed, marked, el("p", {}, button), status);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!consent.checked) { status.replaceChildren("Tick the box first."); return; }
+    button.disabled = true;
+    status.replaceChildren("publishing…");
+    const payload = {};
+    for (const [field, list] of values) {
+      const given = list.filter((value) => value);
+      if (given.length) payload[field] = given.length === 1 ? given[0] : given;
+    }
+    payload.authorName = name.value.trim();
+    payload.authorOrcid = orcid.value.trim();
+    payload.example = example.checked;
+    payload.website = trap.value;
+    try {
+      const answer = await fetch(service, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+      }).then((r) => r.json());
+      if (answer.uri) {
+        status.replaceChildren(
+          el("strong", {}, example.checked ? "Published as an example: " : "Published: "),
+          link(answer.uri),
+          el("span", { class: "muted" }, " — this is its permanent address, copy it if you need it."));
+        if (answer.ignored?.length) {
+          status.append(el("p", { class: "muted" },
+            `Not published, because the user story vocabulary has no place for them yet: ${answer.ignored.join(", ")}.`));
+        }
+        form.querySelectorAll('input:not([type="checkbox"]), textarea').forEach((control) => { control.value = ""; });
+        consent.checked = false;
+        example.checked = false;
+        values.clear();
+      } else {
+        status.replaceChildren(answer.error || "the service could not publish this");
+        button.disabled = false;
+      }
+    } catch (error) {
+      status.replaceChildren(`the service did not answer: ${error.message}`);
+      button.disabled = false;
+    }
+  });
+  return form;
+}
+
+async function readNanopub(uri) {
+  try {
+    const trig = await fetch(recordUri(uri), { headers: { Accept: "application/trig" } }).then((r) => r.text());
+    const label = /rdfs:label\s+"((?:[^"\\]|\\.)*)"/.exec(trig);
+    const name = /foaf:name\s+"((?:[^"\\]|\\.)*)"/.exec(trig);
+    const date = /dct:created\s+"([0-9-]{10})/.exec(trig);
+    const text = label ? label[1].replace(/^AIDA sentence:\s*/, "") : null;
+    return { text, author: name ? name[1] : null, date: date ? date[1] : null };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The look of a dashboard: a theme.json resource if the object has one, else the
+ * annotations on the object. The file exists because ROHub lets a user add or replace
+ * a resource in its interface, but not edit an annotation.
+ */
+/**
+ * An embedded creation form (Science Live's /embed/create) for a template, posting what it
+ * collects to `settings.service`. It takes this page's colours, sizes itself through the
+ * same resize message as the nanopub embeds, and `settings.example` ("true") makes it a
+ * test run that publishes examples only.
+ */
+async function embeddedForm(settings, template, brand) {
+  const theme = await readTheme(brand);
+  const hex = (colour) => String(colour || "").replace(/^#/, "");
+  const url = new URL(settings.form);
+  url.searchParams.set("template", template);
+  url.searchParams.set("service", settings.service);
+  url.searchParams.set("theme", "light");
+  url.searchParams.set("title", "false");   // the panel already says what is being added
+  if (theme.primaryColor) url.searchParams.set("primaryColor", hex(theme.primaryColor));
+  if (theme.backgroundColor) url.searchParams.set("bgColor", hex(theme.backgroundColor));
+  if (String(settings.example) === "true") url.searchParams.set("example", "true");
+  return el("figure", { class: "np" },
+    el("iframe", { src: url.href, title: "Contribution form", style: "height: 60rem" }));
+}
+
+/** Does this object carry a look of its own? */
+function hasBrand(object) {
+  return Boolean(fileFor(object, "Theme", /^theme\.json$/i)
+    || fileFor(object, "Logo", /^logo\.(png|jpe?g|svg|webp)$/i)
+    || fileFor(object, "BackgroundImage", /^background\.(png|jpe?g|webp)$/i));
+}
+
+function fileFor(object, role, pattern) {
+  return object.parts.find((p) => (p.role || "").endsWith(role) || pattern.test(p.name || ""));
+}
+
+async function readTheme(object) {
+  const file = fileFor(object, "Theme", /theme\.json$/i);
+  if (file) {
+    try {
+      const theme = await fetch(file.url).then((r) => r.json());
+      if (theme && typeof theme === "object") return theme;
+    } catch { /* a theme that cannot be read is simply not applied */ }
+  }
+  return object.colour ? { primaryColor: "#" + object.colour } : {};
+}
+
+function applyTheme(theme, object) {
+  const root = document.documentElement.style;
+  if (theme.primaryColor) root.setProperty("--primary", theme.primaryColor);
+  if (theme.accentColor) root.setProperty("--accent", theme.accentColor);
+  if (theme.backgroundColor) root.setProperty("--bg", theme.backgroundColor);
+  if (theme.fontFamily) root.setProperty("--sans", theme.fontFamily);
+
+  // The brand is made of files: a user replaces them in ROHub, nothing else changes.
+  const header = document.querySelector(".bar");
+  const logo = fileFor(object, "Logo", /^logo\.(png|jpe?g|svg|webp)$/i);
+  const slot = document.getElementById("logo");
+  slot.replaceChildren();
+  if (logo) slot.append(el("img", { src: logo.url, alt: "" }));
+  const background = fileFor(object, "BackgroundImage", /^background\.(png|jpe?g|webp)$/i);
+  header.style.backgroundImage = background
+    ? `linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,.6)), url("${background.url}")`
+    : "";
+  header.style.backgroundSize = background ? "cover" : "";
+  header.style.backgroundPosition = background ? "center" : "";
+}
+
+// --- rendering ---------------------------------------------------------------
+
+function card(title, ...body) {
+  return el("section", { class: "card" }, title ? el("h2", {}, title) : null, ...body);
+}
+
+function definitions(pairs) {
+  const list = el("dl", { class: "meta" });
+  for (const [key, value] of pairs) {
+    if (value === undefined || value === null || value === "") continue;
+    list.append(el("dt", {}, key), el("dd", {}, value));
+  }
+  return list;
+}
+
+const link = (href, text) => el("a", { href, target: "_blank", rel: "noreferrer" }, text || href);
+/** A link to another object, keeping the trail back to the one we came from. */
+const objectLink = (pid, text, from) => el("a", {
+  href: `?fdo=${encodeURIComponent(pid)}` + (from ? `&from=${encodeURIComponent(from)}` : ""),
+}, text || pid);
+
+async function renderPanel(panel, object, into) {
+  let label = PANEL_LABELS[panel.kind] ?? panel.kind;
+  if (label && currentPage && label.toLowerCase() === currentPage.title.toLowerCase()) label = "";
+  const section = card(label);
+  into.append(section);
+  if (object.datasetPromise && !object.dataset) {
+    section.append(el("p", { class: "muted" }, "reading the dataset…"));
+    await object.datasetPromise;
+    section.replaceChildren(el("h2", {}, label));
+  }
+
+  const settings = Object.entries(panel.settings)
+    .map(([k, v]) => `${k} = ${v}`).join(" · ");
+  const note = (text) => section.append(el("p", { class: "muted" }, text));
+
+  if (panel.kind === "MapView") {
+    // A dashboard bound to one dataset maps that one; a collection maps the datasets it
+    // holds, and lets the reader choose between them.
+    let dataset = object.dataset || object;
+    if (!dataset.storeUrl && !RO_PID.test(dataset.pid || "")) dataset = object;
+    if (!object.dataset && object.members.length) {
+      const members = await readMembers(object);
+      const mappable = members.filter((m) => m.storeUrl || m.iadopt?.length);
+      if (!mappable.length) return note("None of the objects in this collection carries data a map can draw.");
+      dataset = mappable[mapChoice] || mappable[0];
+      if (mappable.length > 1) {
+        const chooser = el("select", { class: "chooser" },
+          mappable.map((m, i) => el("option", { value: String(i), ...(i === mapChoice ? { selected: "selected" } : {}) }, m.name)));
+        chooser.addEventListener("change", () => {
+          mapChoice = Number(chooser.value);
+          openPage(currentPage.title);
+        });
+        section.append(el("p", {}, el("label", {}, "Dataset: "), chooser));
+      }
+    }
+    // The viewer opens a Research Object PID directly, which is better than handing it a
+    // store URL: it reads the crate itself, so the variables keep their names and units.
+    const target = RO_PID.test(dataset.pid) ? dataset.pid : dataset.storeUrl;
+    if (!target) return note("The object this panel points at has no data to draw.");
+    const withTheme = { colormap: object.themeColormap, ...panel.settings };
+    const url = viewerUrl(target, withTheme);
+    section.append(el("iframe", { class: "map", src: url, title: `Map of ${dataset.name}` }));
+    note(`renderer: ${panel.renderer || "any"}${settings ? " · " + settings : ""} — the settings travel to the viewer in the URL`);
+    section.append(el("p", { class: "muted" }, link(url, "open the map in its own tab")));
+  } else if (panel.kind === "VariablesView") {
+    const dataset = object.dataset || object;
+    if (dataset.iadopt?.length) {
+      section.append(el("ul", { class: "vars" }, dataset.iadopt.map((v) =>
+        el("li", {}, link(v.iri, v.label)))));
+      return note("Each variable is an I-ADOPT decomposition published as a nanopublication: what is measured, of what, in what. A panel binds to these, not to the array name, so the same dashboard works on another city's data.");
+    }
+    if (!dataset.stacUrl) return note("The object this panel points at describes no variables.");
+    const stac = await fetch(dataset.stacUrl).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const bands = (stac?.properties?.bands || []).map((b) => b.name).filter(Boolean);
+    if (!bands.length) return note("The STAC item lists no bands.");
+    section.append(el("ul", { class: "cols" }, bands.map((b) => el("li", {}, el("code", {}, b)))));
+    note("Read live from the STAC item the dataset points at. These are band names: this dataset carries no I-ADOPT decomposition, so a panel can only bind by name.");
+  } else if (panel.kind === "ClaimsView") {
+    const dataset = object.dataset || object;
+    if (!dataset.claims.length) return note("No nanopublication is linked to this dataset yet.");
+    for (const uri of dataset.claims) {
+      const item = el("article", { class: "claim" }, el("p", { class: "muted" }, "reading the nanopublication…"));
+      section.append(item);
+      readNanopub(uri).then((np) => {
+        item.replaceChildren(
+          el("p", { class: "claim-text" }, np.text || "(this nanopublication states no sentence)"),
+          el("p", { class: "muted" },
+            np.author ? `${np.author}` : "",
+            np.author && np.date ? " · " : "",
+            np.date || "",
+            " · ", link(uri, "the nanopublication"),
+            " · ", link(EMBED + encodeURIComponent(uri), "full record in Science Live")));
+      });
+    }
+    note("Each claim is a nanopublication the dataset links to; the text is read from the nanopublication itself.");
+  } else if (panel.kind === "MembersView") {
+    if (!object.members.length) return note("This object lists no members.");
+    if (activeTopic || searchText) {
+      const members = await readMembers(object);
+      const keep = members.filter((m) =>
+        (!activeTopic || (m.keywords || []).includes(activeTopic)) &&
+        (!searchText || `${m.name} ${m.description} ${(m.keywords || []).join(" ")}`
+          .toLowerCase().includes(searchText)));
+      section.append(el("p", { class: "filter" },
+        activeTopic ? `Topic: ${activeTopic} ` : `Search: ${searchText} `,
+        el("button", { class: "clear", type: "button" }, "show all")));
+      section.querySelector(".clear").addEventListener("click", () => {
+        activeTopic = null;
+        searchText = "";
+        openPage(currentPage.title);
+      });
+      section.append(el("ul", { class: "members" }, keep.map((m) =>
+        el("li", {}, kindIcon(m), objectLink(m.pid, m.name, object.pid),
+          m.description ? el("div", { class: "muted" }, m.description.slice(0, 180)) : null))));
+      return;
+    }
+    const list = el("ul", { class: "members" });
+    for (const member of object.members) {
+      const item = el("li", {}, objectLink(member, member, object.pid));
+      list.append(item);
+      objectOf(member).then((described) => {
+        item.replaceChildren(...[
+          kindIcon(described),
+          objectLink(member, described.name, object.pid),
+          described.description ? el("div", { class: "muted" }, plain(described.description).slice(0, 180) + "…") : null,
+        ].filter(Boolean));
+      }).catch(() => {});
+    }
+    section.append(list);
+    note("Each member is a FAIR Digital Object of its own; opening one renders it with the page kind that fits it.");
+  } else if (panel.kind === "MetadataView") {
+    const dataset = object.dataset || object;
+    section.append(definitions([
+      ["PID", link(dataset.pid)],
+      ["Licence", dataset.licence || "not stated"],
+      ["Resources", el("span", {}, dataset.parts.map((p) => el("div", {}, link(p.url, p.name),
+        p.mediaType ? el("span", { class: "muted" }, ` ${p.mediaType}`) : null)))],
+    ]));
+  } else if (panel.kind === "HeroView") {
+    section.classList.add("hero");
+    const image = fileFor(object.brand || object, "BackgroundImage", /^background\.(png|jpe?g|webp)$/i);
+    if (image) {
+      section.style.backgroundImage =
+        `linear-gradient(to right, rgba(255,255,255,.92) 0%, rgba(255,255,255,.75) 45%, rgba(255,255,255,.25) 100%), url("${image.url}")`;
+    }
+    // The words are the object's own: its title and its description. Nothing here is
+    // written in an annotation, and nothing is written in this viewer.
+    section.append(el("h2", { class: "hero-title" }, object.name));
+    if (object.description) section.append(el("p", { class: "hero-lead" }, plain(object.description)));
+    if (currentPage?.searchInHero) section.append(searchBox(object));
+  } else if (panel.kind === "ContributeView") {
+    // Publishing means signing, and a page served from static hosting cannot hold a key.
+    // So the panel says what the form asks and hands over to a service that can sign.
+    const template = panel.settings.template;
+    if (!template) return note("This panel names no template.");
+    const file = fileFor(object.brand || object, "Contribute", /^contribute\.(md|txt)$/i);
+    const intro = file ? await fetch(file.url).then((r) => r.text()).catch(() => "") : "";
+    const form = await readTemplate(template);
+    const heading = section.querySelector("h2");
+    if (heading && form.name) heading.textContent = `Add a ${form.name.toLowerCase()}`;
+    if (intro.trim()) section.append(el("div", { class: "prose", html: markdown(intro.trim()) }));
+    else if (form.description) section.append(el("p", { class: "prose" }, form.description));
+
+    if (panel.settings.form && panel.settings.service) {
+      // Science Live's form for this template, embedded in this page's colours. It posts
+      // to the same signing service, so nobody needs an account or an ORCID.
+      section.append(await embeddedForm(panel.settings, template, object.brand || object));
+    } else if (panel.settings.service && form.fields.length) {
+      // The form is here, in this page's own colours; only the signing happens elsewhere.
+      section.append(templateForm(form, panel.settings.service, object));
+    } else {
+      if (form.questions.length) {
+        section.append(el("p", { class: "muted" }, "The form asks for:"),
+          el("ul", { class: "vars" }, form.questions.map((q) => el("li", {}, q))));
+      }
+      const elsewhere = panel.settings.link || "https://nanodash.knowledgepixels.com/publish?template=";
+      section.append(el("p", {}, el("a", {
+        class: "cta", href: elsewhere + encodeURIComponent(recordUri(template)),
+        target: "_blank", rel: "noreferrer",
+      }, panel.settings.label || `Write your ${form.name ? form.name.toLowerCase() : "statement"}`)));
+      section.append(el("p", { class: "muted" },
+        "The form opens elsewhere, because publishing means signing and this page holds no key."));
+    }
+    section.append(el("p", { class: "muted" }, "Template: ", link(recordUri(template), form.name || template)));
+  } else if (panel.kind === "NoticeView") {
+    // The text of a notice is a file in the object (notice.md), so a curator can change it.
+    const file = fileFor(object.brand || object, "Notice", /^notice\.(md|txt)$/i);
+    if (!file) return section.remove();
+    const text = await fetch(file.url).then((r) => r.text()).catch(() => "");
+    if (!text.trim()) return section.remove();
+    section.classList.add("notice");
+    section.replaceChildren(el("p", {}, text.trim()));
+  } else if (panel.kind === "AskView") {
+    section.append(searchBox(object));
+  } else if (panel.kind === "TopicsView") {
+    const members = await readMembers(object);
+    const counts = new Map();
+    members.forEach((m) => (m.keywords || []).forEach((k) =>
+      counts.set(k, (counts.get(k) || 0) + 1)));
+    if (!counts.size) {
+      return note("None of the objects in this collection states a keyword, so there is nothing to explore by topic yet.");
+    }
+    const sorted = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 12);
+    section.append(el("div", { class: "facets" }, sorted.map(([topic, n]) =>
+      el("button", { class: "facet", type: "button", "data-topic": topic },
+        el("strong", {}, topic), el("span", { class: "muted" }, `${n} ${n === 1 ? "object" : "objects"}`)))));
+    section.querySelectorAll(".facet").forEach((button) => button.addEventListener("click", () => {
+      activeTopic = activeTopic === button.dataset.topic ? null : button.dataset.topic;
+      const collection = currentPages.find((p) => p.panels.some((x) => x.kind === "MembersView"));
+      if (collection) openPage(collection.title);
+    }));
+  } else if (panel.kind === "CategoriesView") {
+    const members = await readMembers(object);
+    const counts = new Map();
+    members.forEach((m) => {
+      const label = kindOf(m);
+      counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    section.append(el("div", { class: "facets" }, [...counts].map(([label, n]) =>
+      el("div", { class: "facet count" }, el("span", { class: "stat-value" }, String(n)), el("strong", {}, label)))));
+    note(`${members.length} ${members.length === 1 ? "object" : "objects"} in all, counted from what each record states.`);
+  } else if (panel.kind === "PartnersView") {
+    const logos = object.parts.filter((p) => (p.role || "").endsWith("Partner"));
+    if (!logos.length) return note("This object names no partners.");
+    section.classList.add("partners");
+    section.append(el("div", { class: "logos" }, logos.map((p) =>
+      el("img", { src: p.url, alt: p.name, title: p.name }))));
+  } else if (panel.kind === "QueryView") {
+    const iri = panel.settings.query || panel.settings.object;
+    if (!iri) return note("This panel names no query.");
+    section.append(el("p", { class: "muted" }, "running the query…"));
+    let result;
+    try {
+      result = await runQuery(iri, queryParameters(panel.settings));
+    } catch (error) {
+      return section.replaceChildren(el("h2", {}, label || "Query"),
+        el("p", { class: "muted" }, String(error.message)));
+    }
+    section.replaceChildren(...(label ? [el("h2", {}, label)] : []));
+    if (!result.rows.length) return note("The query returned nothing.");
+
+    const { shown } = queryColumns(result.columns);
+    const asCards = (panel.settings.layout || "").toLowerCase() === "cards";
+    if (asCards) {
+      section.append(el("div", { class: "qcards" }, result.rows.map((row) => {
+        const card = el("article", { class: "qcard" });
+        // A cell that is a bare identifier with no label says nothing to a reader; the row
+        // already links to the nanopublication it came from.
+        const cells = shown.map((column) => ({ column, ...cellOf(row, column) }))
+          .filter((cell) => cell.text);
+        // The heading is the first cell that reads as a name rather than an address.
+        const headingAt = cells.findIndex((cell) => !/^https?:\/\//.test(cell.text));
+        cells.forEach((cell, i) => {
+          const body = cell.href
+            ? (cell.bare ? nameLater(link(cell.href, cell.text), cell.href) : link(cell.href, cell.text))
+            : cell.text;
+          card.append(i === headingAt
+            ? el("h3", {}, body)
+            : el("p", {}, el("span", { class: "qlabel" }, prettyColumn(cell.column) + ": "), body));
+        });
+        if (row.np) card.append(el("p", { class: "muted" }, link(row.np, "the nanopublication")));
+        return card;
+      })));
+    } else {
+      // A column named *_group (e.g. principle_group) heads the rows that share its value,
+      // as Nanodash shows it, rather than repeating on every row.
+      const group = shown.find((c) => c.endsWith("_group"));
+      const columns = shown.filter((c) => c !== group);
+      const head = el("tr", {}, columns.map((c) => el("th", {}, prettyColumn(c))), el("th", {}, "Source"));
+      const rowOf = (row) => el("tr", {},
+        columns.map((column) => {
+          const { text, href, bare } = cellOf(row, column);
+          // A lone check mark (e.g. "curated") is a flag: make it visible and say what it means
+          if (!href && text === "✓") {
+            return el("td", {}, el("span", { class: "tick", title: prettyColumn(column), "aria-label": prettyColumn(column) }, "✓"));
+          }
+          if (!href) return el("td", {}, text);
+          const anchor = link(href, text);
+          return el("td", {}, bare ? nameLater(anchor, href) : anchor);
+        }),
+        el("td", {}, row.np ? link(row.np, "nanopub") : ""));
+      const rows = [];
+      let current;
+      for (const row of result.rows) {
+        if (group && row[group] !== current) {
+          current = row[group];
+          rows.push(el("tr", { class: "qgroup" }, el("th", { colspan: String(columns.length + 1) }, current || "")));
+        }
+        rows.push(rowOf(row));
+      }
+      const body = el("tbody", {}, rows);
+      section.append(el("div", { class: "qtable" }, el("table", { class: "panels" }, el("thead", {}, head), body)));
+    }
+    note(`${result.rows.length} ${result.rows.length === 1 ? "result" : "results"}, read live from the nanopublication network · ${iri.split("/").pop()}`);
+  } else if (panel.kind === "ResourcesView") {
+    const dataset = object.dataset || object;
+    if (!dataset.parts.length) return note("This object has no resources.");
+    section.append(el("ul", { class: "members" }, dataset.parts.map((p) =>
+      el("li", {}, link(p.url, p.name), p.mediaType ? el("span", { class: "muted" }, ` ${p.mediaType}`) : null))));
+  } else if (panel.kind === "TextView") {
+    const text = panel.settings.text || object.description;
+    if (!text) return note("This object states no description.");
+    section.append(el("div", { class: "prose", html: markdown(text) }));
+  } else if (panel.kind === "StatsView") {
+    const dataset = object.dataset || object;
+    const available = {
+      datasets: [object.members.length || (object.input ? 1 : 0), "datasets"],
+      variables: [dataset.iadopt?.length || dataset.bandCount || 0, "variables"],
+      claims: [dataset.claims.length, "claims"],
+      resources: [dataset.parts.length, "resources"],
+      panels: [object.pages.reduce((n, page) => n + page.panels.length, 0), "panels"],
+    };
+    const wanted = (panel.settings.stats || "datasets,variables,claims,resources")
+      .split(",").map((k) => k.trim()).filter((k) => k in available);
+    section.append(el("div", { class: "stats" }, wanted.map((key) => {
+      const [value, label] = available[key];
+      return el("div", { class: "stat" }, el("span", { class: "stat-value" }, String(value)),
+        el("span", { class: "stat-label" }, label));
+    })));
+    note("Counted from the object and the dataset it shows, each time the page is opened.");
+  } else if (panel.kind === "LinksView") {
+    const others = object.pages.filter((page) => page.title !== currentPage?.title);
+    if (!others.length) return note("This dashboard has only one page.");
+    section.append(el("div", { class: "cards" }, others.map((page) =>
+      el("button", { class: "gocard", type: "button", "data-page": page.title },
+        el("strong", {}, page.title),
+        el("span", { class: "muted" }, page.panels.map((p) => PANEL_LABELS[p.kind] || p.kind).join(" · "))))));
+    section.querySelectorAll(".gocard").forEach((button) => {
+      button.addEventListener("click", () => openPage(button.dataset.page));
+    });
+  } else if (panel.kind === "EmbedView") {
+    const url = panel.settings.url || object.parts.find((p) => (p.role || "").endsWith("Embed"))?.url;
+    if (!url) return note("This panel names no service to embed.");
+    section.append(el("iframe", { class: "service", src: url, title: panel.settings.title || "Embedded service" }));
+    note(el("span", {}, "Embedded service: ", link(url)));
+  } else {
+    note(`This viewer has no renderer for ${panel.kind}.`);
+  }
+}
+
+function describeObject(object) {
+  const rows = [
+    ["PID", link(object.pid)],
+    ["Type", object.type.map((t) => el("code", {}, t))],
+    ["Profile", object.profile ? el("code", {}, object.profile) : null],
+    ["Accepts", object.accepts ? el("code", {}, short(object.accepts)) : null],
+    ["Licence", object.licence],
+    ["Crate", link(CRATE(RO_PID.exec(object.pid)[1]), "the RO-Crate ROHub serves")],
+  ];
+  if (object.input) rows.push(["Shows", objectLink(object.input, object.dataset?.name || object.input)]);
+  return card("What this object says", definitions(rows));
+}
+
+function compositionTable(object) {
+  const table = el("table", { class: "panels" },
+    el("thead", {}, el("tr", {}, el("th", {}, "Page"), el("th", {}, "Panel"),
+      el("th", {}, "Renderer"), el("th", {}, "Settings"))));
+  const body = el("tbody");
+  object.pages.forEach((page) => {
+    page.panels.forEach((panel, index) => {
+      body.append(el("tr", {},
+        el("td", {}, index === 0 ? page.title : ""),
+        el("td", {}, el("code", {}, panel.kind)),
+        el("td", {}, panel.renderer ? el("code", {}, panel.renderer) : "any"),
+        el("td", {}, Object.entries(panel.settings).map(([k, v]) => el("code", {}, `${k} = ${v}`)))));
+    });
+  });
+  table.append(body);
+  return card("The composition it declares", table,
+    el("p", { class: "muted" }, "Every row is an annotation on the Research Object in ROHub. Change one there and reload this page."));
+}
+
+/** The kind of thing an object is, in the profile's terms. */
+function acceptsOf(object) {
+  if (object.storeUrl || object.iadopt?.length) return CCA + "GeospatialDataset";
+  if (kindOf(object) === "Publications") return CCA + "Publication";
+  if (kindOf(object) === "Datasets") return CCA + "Dataset";
+  return null;
+}
+
+/**
+ * The composition an object is shown with: one it names itself, else one the collection
+ * offers for objects of its kind - each candidate dashboard states what it accepts, so a
+ * paper and a geospatial dataset in the same hub are shown differently.
+ */
+async function dashboardFor(object, from) {
+  if (object.ownDashboard) {
+    const own = await objectOf(object.ownDashboard).catch(() => null);
+    if (own?.pages.length) return own;
+  }
+  if (!from) return null;
+  const parent = await objectOf(from).catch(() => null);   // in flight since show() started
+  const candidates = await Promise.all((parent?.memberDashboards || [])
+    .map((pid) => objectOf(pid).catch(() => null)));
+  const usable = candidates.filter((c) => c?.pages.length);
+  const wanted = acceptsOf(object);
+  return usable.find((c) => c.accepts && wanted && c.accepts.endsWith(short(wanted)))
+    || usable.find((c) => !c.accepts)
+    || null;
+}
+
+/** The search box: it filters the objects in the collection, nothing more. */
+function searchBox() {
+  const input = el("input", { type: "text", placeholder: "Search these resources…", value: searchText });
+  input.addEventListener("input", () => {
+    searchText = input.value.trim().toLowerCase();
+    const collection = currentPages.find((p) => p.panels.some((x) => x.kind === "MembersView"));
+    if (searchText && collection && collection.title !== currentPage.title) openPage(collection.title);
+  });
+  return el("div", { class: "ask" }, input,
+    el("span", { class: "muted" },
+      "Searches the titles, descriptions and topics of the objects in this collection."));
+}
+
+/** What to show for an object that describes no pages of its own. */
+function defaultPages(object) {
+  const panel = (kind) => ({ kind, settings: {} });
+  const geospatial = object.storeUrl || object.iadopt?.length;
+  if (geospatial) {
+    return [
+      { title: "Overview", panels: [panel("TextView"), panel("StatsView"), panel("ClaimsView"), panel("LinksView")] },
+      { title: "Explore the data", panels: [panel("MapView"), panel("VariablesView")] },
+      { title: "About the dataset", panels: [panel("MetadataView"), panel("ResourcesView")] },
+    ];
+  }
+  return [
+    { title: "About", panels: [panel("TextView"), panel("MetadataView")] },
+    { title: "Files and links", panels: [panel("ResourcesView")] },
+    { title: "Claims", panels: [panel("ClaimsView")] },
+  ];
+}
+
+/**
+ * The footer of any dashboard: short statements the object makes about itself
+ * (cca:footerStatement1..n, "Heading — text") and the partner logos it carries.
+ */
+async function readFooter(object) {
+  const file = fileFor(object, "Footer", /^footer\.(md|txt)$/i);
+  if (!file) return [];
+  const text = await fetch(file.url).then((r) => r.text()).catch(() => "");
+  return text.split("\n").map((line) => line.replace(/^[-*]\s*/, "").trim()).filter(Boolean);
+}
+
+function renderFooter(object) {
+  const slot = document.getElementById("footer-extra");
+  slot.replaceChildren();
+
+  const statements = (object.footerLines || []).map(String);
+  if (statements.length) {
+    slot.append(el("div", { class: "trust" }, statements.map((statement) => {
+      const [heading, ...rest] = statement.split("—");
+      return el("div", { class: "trust-item" },
+        el("strong", {}, heading.trim()),
+        rest.length ? el("span", { class: "muted" }, rest.join("—").trim()) : null);
+    })));
+  }
+
+  const logos = object.parts.filter((p) => (p.role || "").endsWith("Partner"));
+  if (logos.length) {
+    slot.append(el("div", { class: "partners" },
+      el("span", { class: "muted" }, "In collaboration with"),
+      el("div", { class: "logos" }, logos.map((p) => el("img", { src: p.url, alt: p.name, title: p.name })))));
+  }
+}
+
+async function show(pid) {
+  const main = document.getElementById("main");
+  const nav = document.getElementById("pages");
+  main.replaceChildren(el("p", { class: "muted" }, "Reading " + pid + " from ROHub…"));
+  nav.replaceChildren();
+
+  // The collection this object was opened from is fetched at the same time, not after it.
+  const fromEarly = wantedFrom();
+  const parentPromise = fromEarly
+    ? objectOf(fromEarly)
+        .then((parent) => {
+          // warm the compositions it offers, so choosing one costs no extra round trip
+          (parent?.memberDashboards || []).forEach((pid) => objectOf(pid).catch(() => null));
+          return parent;
+        })
+        .catch(() => null)
+    : null;
+
+  let object;
+  try {
+    object = readObject(await crateOf(pid));
+  } catch (error) {
+    main.replaceChildren(card("This object could not be read", el("p", {}, String(error.message))));
+    return;
+  }
+  // A member opened from a collection stays inside that collection's site: it keeps the
+  // hub's look unless it carries a brand of its own.
+  const parent = parentPromise ? await parentPromise : null;
+  const brand = hasBrand(object) ? object : (parent && hasBrand(parent) ? parent : object);
+  object.brand = brand;
+  const theme = await readTheme(brand);
+  applyTheme(theme, brand);
+  if (theme.colormap) object.themeColormap = theme.colormap;
+  document.getElementById("title").textContent = object.name;
+  document.getElementById("source").replaceChildren(link(object.pid, "source object in ROHub"));
+
+  // The way back, when this object was opened from another one
+  const from = wantedFrom();
+  const trail = document.getElementById("trail");
+  trail.replaceChildren();
+  if (from) {
+    const back = objectLink(from, "← back");
+    trail.append(back);
+    objectOf(from).then((parent) => back.replaceChildren(`← ${parent.name}`)).catch(() => {});
+  }
+  document.title = object.name;
+
+  // The dataset is fetched in the background: the pages appear at once and each panel
+  // waits only for what it needs.
+  if (object.input) {
+    object.datasetPromise = objectOf(object.input)
+      .then((dataset) => { object.dataset = dataset; return dataset; })
+      .catch(() => null);
+  }
+
+  main.replaceChildren();
+  // A member opened from a collection is shown the way that collection says its members
+  // are shown; failing that, the way this viewer shows an object of its kind.
+  let pages = object.pages;
+  if (!pages.length) {
+    const template = await dashboardFor(object, from);
+    if (template?.pages.length) {
+      pages = template.pages;
+      object.dataset = object;              // the member is what those pages show
+    }
+  }
+  if (!pages.length) pages = defaultPages(object);
+
+  // The description is the lead only when no page shows it: a member takes its pages from
+  // a template, so this can only be decided once the pages are known.
+  const shown = pages.some((page) => page.panels.some((panel) =>
+    panel.kind === "TextView" || panel.kind === "HeroView"));
+  if (object.description && !shown) {
+    main.append(el("div", { class: "lead", html: markdown(object.description) }));
+  }
+
+  currentObject = object;
+  currentPages = pages;
+  pages.forEach((page, index) => {
+    const anchor = el("a", { href: "#", class: index === 0 ? "on" : "" }, page.title);
+    anchor.addEventListener("click", (event) => { event.preventDefault(); openPage(page.title); });
+    nav.append(anchor);
+  });
+  drawPage(pages[0], object);
+
+  readFooter(brand).then((lines) => { brand.footerLines = lines; renderFooter(brand); });
+  renderFooter(brand);
+
+  const details = el("details", { class: "howto" }, el("summary", {}, "How this page is described"));
+  details.append(el("p", { class: "muted" },
+    "This viewer holds no configuration for any dashboard. It reads the RO-Crate that ROHub serves for the object " +
+    "below and draws the pages, panels, settings and data that the annotations on that object state; change the " +
+    "object in ROHub and reload. The terms it reads are those the draft profile map cca-dashboard-0.1 declares, " +
+    "which fdo-consume uses on the publishing side."));
+  details.append(describeObject(object));
+  if (object.pages.length) details.append(compositionTable(object));
+  document.getElementById("after").replaceChildren(details);
+}
+
+let activeTopic = null;
+let searchText = "";
+let mapChoice = 0;
+let currentObject = null;
+let currentPages = [];
+let currentPage = null;
+
+function openPage(title) {
+  const page = currentPages.find((p) => p.title === title) || currentPages[0];
+  [...document.getElementById("pages").children].forEach((child) =>
+    child.classList.toggle("on", child.textContent === page.title));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  drawPage(page, currentObject);
+}
+
+async function drawPage(page, object) {
+  // A page with a hero shows its search box inside the hero, at the top, rather than as a
+  // panel of its own further down.
+  const hasHero = page.panels.some((panel) => panel.kind === "HeroView");
+  const wantsSearch = page.panels.some((panel) => panel.kind === "AskView");
+  const panels = hasHero ? page.panels.filter((panel) => panel.kind !== "AskView") : page.panels;
+  currentPage = { ...page, panels, searchInHero: hasHero && wantsSearch };
+  page = currentPage;
+  const body = document.getElementById("page");
+  // A hero already names the object, so a page heading above it would say it twice.
+  body.replaceChildren(hasHero ? "" : el("h2", { class: "pagetitle" }, page.title));
+  await Promise.all(page.panels.map((panel) => renderPanel(panel, object, body)));
+}
+
+window.addEventListener("message", (event) => {
+  // An embedded form that has just published shrinks to its confirmation: bring it into view
+  if (event.data?.type === "nanopub-embed-published") {
+    document.querySelectorAll("figure.np iframe").forEach((frame) => {
+      if (frame.contentWindow === event.source) frame.scrollIntoView({ block: "nearest" });
+    });
+    return;
+  }
+  if (!event.data || event.data.type !== "nanopub-embed-resize") return;
+  document.querySelectorAll("figure.np iframe").forEach((frame) => {
+    if (frame.contentWindow === event.source) frame.style.height = `${event.data.height}px`;
+  });
+});
+
+const DEFAULT_PID = "https://w3id.org/ro-id/87e3dd69-0907-488f-9304-6280de312c78";
+const wanted = () => new URLSearchParams(location.search).get("fdo") || DEFAULT_PID;
+const wantedFrom = () => new URLSearchParams(location.search).get("from");
+window.addEventListener("popstate", () => show(wanted()));
+show(wanted());
