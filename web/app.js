@@ -697,6 +697,27 @@ async function readNanopub(uri) {
  * annotations on the object. The file exists because ROHub lets a user add or replace
  * a resource in its interface, but not edit an annotation.
  */
+/**
+ * An embedded creation form (Science Live's /embed/create) for a template, posting what it
+ * collects to `settings.service`. It takes this page's colours, sizes itself through the
+ * same resize message as the nanopub embeds, and `settings.example` ("true") makes it a
+ * test run that publishes examples only.
+ */
+async function embeddedForm(settings, template, brand) {
+  const theme = await readTheme(brand);
+  const hex = (colour) => String(colour || "").replace(/^#/, "");
+  const url = new URL(settings.form);
+  url.searchParams.set("template", template);
+  url.searchParams.set("service", settings.service);
+  url.searchParams.set("theme", "light");
+  url.searchParams.set("title", "false");   // the panel already says what is being added
+  if (theme.primaryColor) url.searchParams.set("primaryColor", hex(theme.primaryColor));
+  if (theme.backgroundColor) url.searchParams.set("bgColor", hex(theme.backgroundColor));
+  if (String(settings.example) === "true") url.searchParams.set("example", "true");
+  return el("figure", { class: "np" },
+    el("iframe", { src: url.href, title: "Contribution form", style: "height: 60rem" }));
+}
+
 /** Does this object carry a look of its own? */
 function hasBrand(object) {
   return Boolean(fileFor(object, "Theme", /^theme\.json$/i)
@@ -904,7 +925,11 @@ async function renderPanel(panel, object, into) {
     if (intro.trim()) section.append(el("div", { class: "prose", html: markdown(intro.trim()) }));
     else if (form.description) section.append(el("p", { class: "prose" }, form.description));
 
-    if (panel.settings.service && form.fields.length) {
+    if (panel.settings.form && panel.settings.service) {
+      // Science Live's form for this template, embedded in this page's colours. It posts
+      // to the same signing service, so nobody needs an account or an ORCID.
+      section.append(await embeddedForm(panel.settings, template, object.brand || object));
+    } else if (panel.settings.service && form.fields.length) {
       // The form is here, in this page's own colours; only the signing happens elsewhere.
       section.append(templateForm(form, panel.settings.service, object));
     } else {
@@ -1313,6 +1338,13 @@ async function drawPage(page, object) {
 }
 
 window.addEventListener("message", (event) => {
+  // An embedded form that has just published shrinks to its confirmation: bring it into view
+  if (event.data?.type === "nanopub-embed-published") {
+    document.querySelectorAll("figure.np iframe").forEach((frame) => {
+      if (frame.contentWindow === event.source) frame.scrollIntoView({ block: "nearest" });
+    });
+    return;
+  }
   if (!event.data || event.data.type !== "nanopub-embed-resize") return;
   document.querySelectorAll("figure.np iframe").forEach((frame) => {
     if (frame.contentWindow === event.source) frame.style.height = `${event.data.height}px`;
