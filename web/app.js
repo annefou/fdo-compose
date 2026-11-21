@@ -620,7 +620,12 @@ function templateForm(template, service, object) {
     el("span", {}, "I understand that what I publish cannot be removed, only superseded or " +
       "retracted, and that it is public."));
 
-  form.append(trap, agreed, el("p", {}, button), status);
+  // A trial run still goes on the network, so it says in the publication that it is one.
+  const example = el("input", { type: "checkbox", id: "f-example" });
+  const marked = el("label", { class: "consent", for: "f-example" }, example,
+    el("span", {}, "This is a test. Mark it as an example, so nobody mistakes it for a real need."));
+
+  form.append(trap, agreed, marked, el("p", {}, button), status);
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -634,15 +639,20 @@ function templateForm(template, service, object) {
     }
     payload.authorName = name.value.trim();
     payload.authorOrcid = orcid.value.trim();
+    payload.example = example.checked;
     payload.website = trap.value;
     try {
       const answer = await fetch(service, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       }).then((r) => r.json());
       if (answer.uri) {
-        status.replaceChildren("published: ", link(answer.uri));
-        form.querySelectorAll("input, textarea").forEach((control) => { control.value = ""; });
+        status.replaceChildren(
+          el("strong", {}, example.checked ? "Published as an example: " : "Published: "),
+          link(answer.uri),
+          el("span", { class: "muted" }, " — this is its permanent address, copy it if you need it."));
+        form.querySelectorAll('input:not([type="checkbox"]), textarea').forEach((control) => { control.value = ""; });
         consent.checked = false;
+        example.checked = false;
         values.clear();
       } else {
         status.replaceChildren(answer.error || "the service could not publish this");
