@@ -52,7 +52,9 @@ annotations:
   cca:page5Panel1Service: https://np-user-story.netlify.app/.netlify/functions/user-story
   # Show Science Live's form for the template, in the dashboard's colours, instead of the
   # viewer's own. It posts to the service above: nobody needs an account or an ORCID.
-  cca:page5Panel1Form: https://platform.sciencelive4all.org/embed/create
+  # The dev deployment while testing; https://platform.sciencelive4all.org/embed/create
+  # once Science Live production has the form.
+  cca:page5Panel1Form: https://platform-dev.sciencelive4all.org/embed/create
   # "true" while testing: everything is published as an example (npx:ExampleNanopub).
   # Set it to "false" for the workshop (ROHub cannot remove a property, only replace it).
   cca:page5Panel1Example: "true"
