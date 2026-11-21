@@ -137,11 +137,11 @@
       ],
       "datePublished": "2026-11-06T11:44:39.509738+00:00",
       "dateCreated": "2026-11-06T11:44:39.509738+00:00",
-      "dateModified": "2026-11-21 09:31:52.048443+00:00",
+      "dateModified": "2026-11-21 10:38:41.692712+00:00",
       "contributor": [],
       "name": "FAIR Climate Matchmaker (dashboard composed from FAIR Digital Objects)",
       "description": "A reading of the FAIR Climate Matchmaker space (https://w3id.org/spaces/fairclimatematchmaker) whose arrangement is described by this Research Object: which published queries to run, on which page, and how to show their results. The content is not copied here - each panel runs a grlc query nanopublication against the nanopublication network when the page is opened, so what a visitor reads is whatever the community has published by then. Experimental, FAIR2Adapt.",
-      "contentSize": 951121,
+      "contentSize": 951518,
       "encodingFormat": "application/ld+json",
       "contentUrl": "https://api.rohub.org/api/ros/5e0f9468-7a2b-4396-a1c0-5152cf923300/crate/download/",
       "citeAs": "Fouilloux, Anne. \"FAIR Climate Matchmaker (dashboard composed from FAIR Digital Objects).\" ROHub. Nov 06 ,2026. https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300.",
@@ -166,9 +166,14 @@
         "@id": "https://w3id.org/ro/terms/cca/HeroView"
       },
       "https://w3id.org/ro/terms/cca/page1Title": "FAIR Climate Matchmaker",
-      "https://w3id.org/ro/terms/cca/page2Panel1Query": {
-        "@id": "https://w3id.org/np/RA8piV4ERrDNzrDP1xAEo4QIupiK9hmdbh7r3jbKAguyU/get-recommended-fsrs"
-      },
+      "https://w3id.org/ro/terms/cca/page2Panel1Query": [
+        {
+          "@id": "https://w3id.org/np/RA8piV4ERrDNzrDP1xAEo4QIupiK9hmdbh7r3jbKAguyU/get-recommended-fsrs"
+        },
+        {
+          "@id": "https://w3id.org/np/RAxrJbndRVthhJVmepiSBeLqWK3zJplflo9n7gEMNTY28/get-recommended-fsrs-cca"
+        }
+      ],
       "https://w3id.org/ro/terms/cca/page1Panel4": {
         "@id": "https://w3id.org/ro/terms/cca/LinksView"
       },

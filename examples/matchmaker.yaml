@@ -29,7 +29,9 @@ annotations:
   cca:page2: cca:CollectionPage
   cca:page2Title: Recommended resources
   cca:page2Panel1: cca:QueryView
-  cca:page2Panel1Query: https://w3id.org/np/RA8piV4ERrDNzrDP1xAEo4QIupiK9hmdbh7r3jbKAguyU/get-recommended-fsrs
+  # Barbara Magagna's get-recommended-fsrs-cca: the resources the FAIR2Adapt community
+  # recommends, with every community recommending each (was all communities' FSRs)
+  cca:page2Panel1Query: https://w3id.org/np/RAxrJbndRVthhJVmepiSBeLqWK3zJplflo9n7gEMNTY28/get-recommended-fsrs-cca
 
   cca:page3: cca:CollectionPage
   cca:page3Title: What people need
