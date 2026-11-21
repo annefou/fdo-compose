@@ -144,17 +144,42 @@ function objectOf(pid) {
 
 /** ROHub takes several seconds to generate a crate, so one visit reads each object once. */
 function remember(pid, crate) {
-  try {
-    sessionStorage.setItem("crate:" + pid, JSON.stringify({ at: Date.now(), crate }));
-  } catch { /* a full or disabled store simply means no memory */ }
+  const kept = JSON.stringify({ at: Date.now(), crate });
+  // The session copy spares ROHub repeated reads; the lasting copy is what the page falls
+  // back on when ROHub cannot answer, so a slow or failing ROHub never blanks the page.
+  try { sessionStorage.setItem("crate:" + pid, kept); } catch { /* full or disabled */ }
+  try { localStorage.setItem("crate:" + pid, kept); } catch { /* full or disabled */ }
 }
 
-function remembered(pid) {
+function remembered(pid, store = sessionStorage, maxAge = 30 * 60 * 1000) {
   try {
-    const kept = JSON.parse(sessionStorage.getItem("crate:" + pid) || "null");
-    if (kept && Date.now() - kept.at < 30 * 60 * 1000) return kept.crate;
+    const kept = JSON.parse(store.getItem("crate:" + pid) || "null");
+    if (kept && Date.now() - kept.at < maxAge) return kept.crate;
   } catch { /* unreadable store */ }
   return null;
+}
+
+/** Objects whose crate came from a copy rather than from ROHub just now */
+const staleCrates = new Set();
+
+/** Ask ROHub, twice, each time giving up after `ms`: a gateway timeout takes 30s to say so */
+async function fetchCrate(uuid, attempts = 2, ms = 20000) {
+  let last;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+      const response = await fetch(CRATE(uuid), { signal: controller.signal });
+      if (response.ok) return await response.json();
+      last = new Error(`ROHub returned ${response.status}`);
+    } catch (error) {
+      last = error.name === "AbortError" ? new Error("ROHub did not answer in time") : error;
+    } finally {
+      clearTimeout(timer);
+    }
+    if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
+  }
+  throw last;
 }
 
 async function crateOf(pid) {
@@ -162,10 +187,17 @@ async function crateOf(pid) {
   if (!match) throw new Error(`not a ROHub PID: ${pid}`);
   let crate = remembered(pid);
   if (!crate) {
-    const response = await fetch(CRATE(match[1]));
-    if (!response.ok) throw new Error(`ROHub returned ${response.status} for ${pid}`);
-    crate = await response.json();
-    remember(pid, crate);
+    try {
+      crate = await fetchCrate(match[1]);
+      remember(pid, crate);
+    } catch (error) {
+      // ROHub is down or slow: use the last copy this browser read, or the snapshot
+      // published with the viewer, rather than an empty page
+      crate = remembered(pid, localStorage, Infinity)
+        || await fetch(`snapshots/${match[1]}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!crate) throw new Error(`ROHub could not be reached (${error.message}); try again in a minute`);
+      staleCrates.add(pid);
+    }
   }
   const graph = crate["@graph"] || [];
   const root = graph.find((e) => e["@id"] === "./") || {};
@@ -1265,6 +1297,10 @@ async function show(pid) {
   }
 
   main.replaceChildren();
+  if (staleCrates.has(pid)) {
+    main.append(el("p", { class: "muted" },
+      "ROHub is not answering right now, so this page shows the copy read most recently. Reload in a few minutes for the latest."));
+  }
   // A member opened from a collection is shown the way that collection says its members
   // are shown; failing that, the way this viewer shows an object of its kind.
   let pages = object.pages;

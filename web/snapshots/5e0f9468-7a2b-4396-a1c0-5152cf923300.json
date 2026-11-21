@@ -1,0 +1,1268 @@
+{
+  "@context": [
+    "https://w3id.org/ro/crate/1.2/context",
+    "https://w3id.org/ro/terms/earth-science#",
+    "https://w3id.org/ro/terms/workflow-run#",
+    "https://w3id.org/ro/terms/test#",
+    {
+      "citeAs": "https://www.w3.org/ns/iana/link-relations/relation#cite-as",
+      "citeAs2": "http://www.iana.org/assignments/relation/cite-as",
+      "community": "http://w3id.org/ro-id/rohub/model#community",
+      "cdesc": "https://reliance.expertcustomers.ai/vocabulary/cdesc/",
+      "creation_mode": "http://w3id.org/ro-id/rohub/model#creation_mode",
+      "prov": "http://www.w3.org/ns/prov#",
+      "archivedAtTime": "http://purl.org/wf4ever/roevo#archivedAtTime",
+      "archivedBy": "http://purl.org/wf4ever/roevo#archivedBy",
+      "hasArchive": "http://purl.org/wf4ever/roevo#hasArchive",
+      "hasSnapshot": "http://purl.org/wf4ever/roevo#hasSnapshot",
+      "isArchiveOf": "http://purl.org/wf4ever/roevo#isArchiveOf",
+      "isFinalized": "http://purl.org/wf4ever/roevo#isFinalized",
+      "isSnapshotOf": "http://purl.org/wf4ever/roevo#isSnapshotOf",
+      "snapshotedAtTime": "http://purl.org/wf4ever/roevo#snapshotedAtTime",
+      "snapshotedBy": "http://purl.org/wf4ever/roevo#snapshotedBy",
+      "forkedAtTime": "http://purl.org/wf4ever/roevo#forkedAtTime",
+      "forkedBy": "http://purl.org/wf4ever/roevo#forkedBy",
+      "hasFork": "http://purl.org/wf4ever/roevo#hasFork",
+      "asWKT": "http://www.opengis.net/ont/geosparql#asWKT",
+      "hasGeometry": "http://www.opengis.net/ont/geosparql#hasGeometry",
+      "Concept": "https://w3id.org/ro/terms/earth-science#Concept",
+      "FieldOfResearch": "https://w3id.org/ro/terms/earth-science#FieldOfResearch",
+      "IPTC": "https://w3id.org/ro/terms/earth-science#IPTC",
+      "Lemma": "https://w3id.org/ro/terms/earth-science#Lemma",
+      "NASA": "https://w3id.org/ro/terms/earth-science#NASA",
+      "Person1": "https://w3id.org/contentdesc#Person",
+      "Phrase": "https://w3id.org/ro/terms/earth-science#Phrase",
+      "Sentence": "https://w3id.org/ro/terms/earth-science#Sentence",
+      "TimeReference": "https://w3id.org/ro/terms/earth-science#TimeReference",
+      "Domain": "https://w3id.org/contentdesc#Domain",
+      "Organization1": "https://w3id.org/contentdesc#Organization",
+      "Place": "https://w3id.org/contentdesc#Place",
+      "normScore": "https://w3id.org/ro/terms/earth-science#normScore",
+      "path": "https://w3id.org/ro/terms/earth-science#path",
+      "score": "https://w3id.org/ro/terms/earth-science#score",
+      "wikidata": "https://w3id.org/ro/terms/earth-science#wikidata",
+      "doi": "http://purl.org/ontology/bibo/doi",
+      "orcid": "https://w3id.org/dingo#orcid",
+      "template": "https://w3id.org/ro/terms/earth-science#template",
+      "dataType": "https://w3id.org/ro/terms/earth-science#dataType",
+      "datasetManager": "https://w3id.org/ro/terms/earth-science#datasetManager",
+      "minValue": "https://w3id.org/ro/terms/earth-science#minValue",
+      "maxValue": "https://w3id.org/ro/terms/earth-science#maxValue",
+      "status": "https://w3id.org/ro/terms/earth-science#status",
+      "DataCubeCollection": "https://w3id.org/ro/terms/earth-science#DataCubeCollection",
+      "DataCubeProduct": "https://w3id.org/ro/terms/earth-science#DataCubeProduct",
+      "enrichmentSubject": "http://w3id.org/ro-id/rohub/model#enrichmentSubject",
+      "softwareRequirements": "https://schema.org/softwareRequirements",
+      "geonames": "https://w3id.org/ro/terms/earth-science#geonames",
+      "value": "https://w3id.org/ro/terms/earth-science#value",
+      "accountablePerson": "https://schema.org/accountablePerson"
+    }
+  ],
+  "@graph": [
+    {
+      "@type": "CreativeWork",
+      "@id": "ro-crate-metadata.json",
+      "conformsTo": [
+        {
+          "@id": "https://w3id.org/ro/crate/1.2"
+        }
+      ],
+      "about": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "./",
+      "identifier": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300",
+      "hasPart": [
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/7dd2b83a-bcc5-49fb-b64f-182679a7cd44",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/5a680b63-72a4-4dd9-9fdf-4facaa76a5b4",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/spaces/fairclimatematchmaker",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/cbb85da1-8c42-4689-ab80-df71d2cf37dd",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/eee991de-8bc4-4485-99a0-71babe07927b",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/9f341a3f-b5a1-4b78-84cf-e05f2095f6dd",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/ccca5783-8377-44f8-b752-af642beab820",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/a5857248-7737-45dc-974a-954d09be9306",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/fea9408b-61ee-46e8-851e-9b49088fd5e6",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/14a6f3ff-c6c9-4e91-aca8-e61c61413032",
+          "@type": "File"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/97d40a4a-a063-4728-b77c-ba4de5251e89",
+          "@type": "File"
+        }
+      ],
+      "@type": [
+        "Dataset",
+        "http://purl.org/wf4ever/ro#ResearchObject",
+        "http://purl.org/wf4ever/roevo#LiveRO"
+      ],
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "datePublished": "2026-11-06T11:44:39.509738+00:00",
+      "dateCreated": "2026-11-06T11:44:39.509738+00:00",
+      "dateModified": "2026-11-21 09:31:52.048443+00:00",
+      "contributor": [],
+      "name": "FAIR Climate Matchmaker (dashboard composed from FAIR Digital Objects)",
+      "description": "A reading of the FAIR Climate Matchmaker space (https://w3id.org/spaces/fairclimatematchmaker) whose arrangement is described by this Research Object: which published queries to run, on which page, and how to show their results. The content is not copied here - each panel runs a grlc query nanopublication against the nanopublication network when the page is opened, so what a visitor reads is whatever the community has published by then. Experimental, FAIR2Adapt.",
+      "contentSize": 951121,
+      "encodingFormat": "application/ld+json",
+      "contentUrl": "https://api.rohub.org/api/ros/5e0f9468-7a2b-4396-a1c0-5152cf923300/crate/download/",
+      "citeAs": "Fouilloux, Anne. \"FAIR Climate Matchmaker (dashboard composed from FAIR Digital Objects).\" ROHub. Nov 06 ,2026. https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300.",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "about": {
+        "@id": "http://eurovoc.europa.eu/3952"
+      },
+      "http://w3id.org/ro-id/rohub/model#creation_mode": "MANUAL",
+      "https://w3id.org/ro/terms/cca/page3Panel1": {
+        "@id": "https://w3id.org/ro/terms/cca/QueryView"
+      },
+      "https://w3id.org/ro/terms/cca/page2": {
+        "@id": "https://w3id.org/ro/terms/cca/CollectionPage"
+      },
+      "https://w3id.org/ro/terms/cca/page4Title": "About",
+      "dct:conformsTo": {
+        "@id": "https://w3id.org/ro/terms/cca/dashboard-profile/0.1"
+      },
+      "https://w3id.org/ro/terms/cca/page1Panel2": {
+        "@id": "https://w3id.org/ro/terms/cca/HeroView"
+      },
+      "https://w3id.org/ro/terms/cca/page1Title": "FAIR Climate Matchmaker",
+      "https://w3id.org/ro/terms/cca/page2Panel1Query": {
+        "@id": "https://w3id.org/np/RA8piV4ERrDNzrDP1xAEo4QIupiK9hmdbh7r3jbKAguyU/get-recommended-fsrs"
+      },
+      "https://w3id.org/ro/terms/cca/page1Panel4": {
+        "@id": "https://w3id.org/ro/terms/cca/LinksView"
+      },
+      "https://w3id.org/ro/terms/cca/page1Panel3": {
+        "@id": "https://w3id.org/ro/terms/cca/QueryView"
+      },
+      "https://w3id.org/ro/terms/cca/page3Title": "What people need",
+      "https://w3id.org/ro/terms/cca/page2Title": "Recommended resources",
+      "https://w3id.org/ro/terms/cca/page3Panel1Layout": "cards",
+      "https://w3id.org/ro/terms/cca/page1Panel1": {
+        "@id": "https://w3id.org/ro/terms/cca/NoticeView"
+      },
+      "https://w3id.org/ro/terms/cca/page4Panel3": {
+        "@id": "https://w3id.org/ro/terms/cca/ResourcesView"
+      },
+      "https://w3id.org/ro/terms/cca/page1Panel3Query": {
+        "@id": "https://w3id.org/np/RAwhCOVgo8-hj3YhFRoFX4b-flQpnOiZ1PyXJOd59sOf0/get-cca-fsr"
+      },
+      "https://w3id.org/ro/terms/cca/page1": {
+        "@id": "https://w3id.org/ro/terms/cca/OverviewPage"
+      },
+      "https://w3id.org/ro/terms/cca/page4Panel2": {
+        "@id": "https://w3id.org/ro/terms/cca/MetadataView"
+      },
+      "https://schema.org/about": {
+        "@id": "https://w3id.org/spaces/fairclimatematchmaker"
+      },
+      "https://w3id.org/ro/terms/cca/page2Panel1": {
+        "@id": "https://w3id.org/ro/terms/cca/QueryView"
+      },
+      "https://w3id.org/ro/terms/cca/accepts": {
+        "@id": "https://w3id.org/ro/terms/cca/Query"
+      },
+      "https://w3id.org/ro/terms/cca/page1Panel3Layout": "cards",
+      "https://w3id.org/ro/terms/cca/page3Panel1Query": {
+        "@id": "https://w3id.org/np/RAfyDmxn_LMbSEH5mg-9FAFAJ5ar3sdRu-xPDALR-_Pbo/get-all-us"
+      },
+      "https://w3id.org/ro/terms/cca/page4": {
+        "@id": "https://w3id.org/ro/terms/cca/DetailsPage"
+      },
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Dashboard"
+      },
+      "https://w3id.org/ro/terms/cca/page3": {
+        "@id": "https://w3id.org/ro/terms/cca/CollectionPage"
+      },
+      "https://w3id.org/ro/terms/cca/page4Panel1": {
+        "@id": "https://w3id.org/ro/terms/cca/TextView"
+      },
+      "https://w3id.org/ro/terms/cca/page5Panel1Label": "Write your user story",
+      "https://w3id.org/ro/terms/cca/page5Panel1Example": "true",
+      "https://w3id.org/ro/terms/cca/page5Title": "Tell us what you need",
+      "https://w3id.org/ro/terms/cca/page5Panel1Service": [
+        {
+          "@id": "https://nanodash.knowledgepixels.com/publish?template="
+        },
+        {
+          "@id": "https://np-user-story.netlify.app/.netlify/functions/user-story"
+        }
+      ],
+      "https://w3id.org/ro/terms/cca/page5Panel1": {
+        "@id": "https://w3id.org/ro/terms/cca/ContributeView"
+      },
+      "https://w3id.org/ro/terms/cca/page5Panel1Template": {
+        "@id": "https://w3id.org/np/RACciFqZEUYYrteZnGikqUEV8ZRVYfJNB3bzy98X5s_qw"
+      },
+      "https://w3id.org/ro/terms/cca/page5": {
+        "@id": "https://w3id.org/ro/terms/cca/ContributePage"
+      },
+      "https://w3id.org/ro/terms/cca/page5Panel1Form": {
+        "@id": "https://platform-dev.sciencelive4all.org/embed/create"
+      },
+      "http://w3id.org/ro-id/rohub/model#enrichmentSubject": [
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/00abc4a5-c802-46eb-846a-90f9c4fc4a2e"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/01b4cbe8-5a9a-4b96-a6ae-c5fe7c81e27b"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/085ef959-a644-46f6-9fe0-7c1a7e10fc0b"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/0c7ac970-c699-479e-bec8-3cd670bbbbe7"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/1798de41-0f01-48b1-9530-e806fdaaa727"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/1f83ac8c-e2a7-4c8b-8106-24764e4c149c"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/25ede43c-2f2e-41aa-ac6a-f392830fb060"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/2c5b9a0e-271f-4943-a723-4d2d0dd8f0b9"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/2d7c208d-681b-457a-b1f6-80bc4b54778b"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/2e863108-6ecf-4b51-8792-5fdb14416f63"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/33ef079d-95b3-47d3-a5d3-7b49c34c3971"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/393d7bf4-94a0-4006-b9cf-2adc03e643c3"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/3a2e3f32-df3b-40fb-9160-3aa1cf52279f"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/3e2c0a0e-2416-471d-b72b-ede6b77e1aa0"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/47631815-8faa-496e-b290-51d68043f127"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/47bf62dd-b2c7-4055-9f87-fda93613bde6"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/4c0003b2-60bd-44dc-8d85-450de001dcbf"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/4cb644a4-dfca-4b05-bd7d-cc2978a74975"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/51f43f9d-00e4-4908-b1cb-3bbd715b0f95"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/6230a80a-fd90-451e-befb-6a21d626aa8b"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/627584e9-1e30-4cb9-9999-f0d71f7952d6"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/66b656a3-d78f-4d1e-afea-b06284d6c653"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/6e859f82-86b7-416f-b2e0-a676606fd18b"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/761bc094-79dc-498e-8319-6cd5354e2025"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/7a226acf-84b1-40b2-9bc4-21d3e93ab7a8"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/7b29bf0d-cf2d-4327-ad81-ab8f461ca83c"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/814ecf8b-cb95-489f-839f-84b298b6b9b7"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/8443a117-9e29-428b-8adf-e1c97be9bde3"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/84f37ad0-17b2-407c-bcb1-9071a2dc91a7"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/86a33e6b-84ef-4601-8bd0-95c750372365"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/86ac3b72-a490-46f1-9d30-622a448d326f"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/890b8244-c210-49dd-bbfb-44fd0226d6d0"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/9e42ea97-b414-4f09-8dc0-73fc8d146b9f"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/9eddcf06-31e4-4959-8f6b-2d7721f365dc"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/acd4b811-5bae-42bc-ae90-0c1000d88b00"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/af4948f9-af8e-42a6-8686-ad46bd2d23ec"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/b2a18ff3-182a-4606-8085-fafde946d5aa"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/b4ded0ed-40c4-4193-a5ba-02aacfb30dab"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/ba107e4a-5e82-496f-a0f3-5768776c61af"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/bd2a977b-bc70-4600-bb74-293e7b62d249"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/c55e1cf3-6829-4ebd-9957-5bc2617cc75f"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/cd75d705-a334-4e20-b578-740a3bd20f96"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/d70ac3dc-7c2b-449c-b8a8-7e626711a3f8"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/d921cc5a-bb22-44b6-aede-f40de17af539"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/e453c3e4-553a-4b5f-9f07-f34c10d8a38d"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/e7b8e217-c100-4caf-baa8-5e8d68d426f0"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/ebb0cd03-ca20-491f-a7bd-7854a91aabbb"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/f1485d3a-a436-4f66-9383-635ffc913d19"
+        },
+        {
+          "@id": "https://w3id.org/ro-id/enrichment/fd7ef565-7fe5-4b5a-90a3-ea6dd7e3420a"
+        }
+      ]
+    },
+    {
+      "@id": "http://eurovoc.europa.eu/3952",
+      "@type": "http://schema.org/DefinedTerm",
+      "name": "Earth sciences",
+      "description": ""
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/7dd2b83a-bcc5-49fb-b64f-182679a7cd44",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "logo.png",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T11:44:49.297970+00:00",
+      "dateCreated": "2026-11-06T11:44:49.297970+00:00",
+      "dateModified": "2026-11-06T11:44:50.384350+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/7dd2b83a-bcc5-49fb-b64f-182679a7cd44/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 166078,
+      "encodingFormat": "image/png",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Logo"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/5a680b63-72a4-4dd9-9fdf-4facaa76a5b4",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "notice.md",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T11:44:58.827148+00:00",
+      "dateCreated": "2026-11-06T11:44:58.827148+00:00",
+      "dateModified": "2026-11-06T11:44:59.605637+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/5a680b63-72a4-4dd9-9fdf-4facaa76a5b4/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 172,
+      "encodingFormat": "text/markdown",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Notice"
+      }
+    },
+    {
+      "@id": "https://w3id.org/spaces/fairclimatematchmaker",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "The space this dashboard reads",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T11:45:07.825307+00:00",
+      "dateCreated": "2026-11-06T11:45:07.825307+00:00",
+      "dateModified": "2026-11-06T11:45:08.193773+00:00",
+      "contentUrl": "https://w3id.org/spaces/fairclimatematchmaker",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Space"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/cbb85da1-8c42-4689-ab80-df71d2cf37dd",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "theme.json",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T19:02:15.229328+00:00",
+      "dateCreated": "2026-11-06T19:02:15.229328+00:00",
+      "dateModified": "2026-11-06T19:02:16.134733+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/cbb85da1-8c42-4689-ab80-df71d2cf37dd/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 269,
+      "encodingFormat": "application/json",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Theme"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/eee991de-8bc4-4485-99a0-71babe07927b",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "footer.md",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T19:02:19.798813+00:00",
+      "dateCreated": "2026-11-06T19:02:19.798813+00:00",
+      "dateModified": "2026-11-06T19:02:20.601185+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/eee991de-8bc4-4485-99a0-71babe07927b/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 226,
+      "encodingFormat": "text/markdown",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Footer"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/9f341a3f-b5a1-4b78-84cf-e05f2095f6dd",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "partner-eosc.png",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T19:37:21.668949+00:00",
+      "dateCreated": "2026-11-06T19:37:21.668949+00:00",
+      "dateModified": "2026-11-06T19:37:22.655119+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/9f341a3f-b5a1-4b78-84cf-e05f2095f6dd/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 61512,
+      "encodingFormat": "image/png",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Partner"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/ccca5783-8377-44f8-b752-af642beab820",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "partner-fair2adapt.png",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T19:37:27.045733+00:00",
+      "dateCreated": "2026-11-06T19:37:27.045733+00:00",
+      "dateModified": "2026-11-06T19:37:28.054804+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/ccca5783-8377-44f8-b752-af642beab820/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 111594,
+      "encodingFormat": "image/png",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Partner"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/a5857248-7737-45dc-974a-954d09be9306",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "partner-mission-adaptation.png",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T19:37:31.994836+00:00",
+      "dateCreated": "2026-11-06T19:37:31.994836+00:00",
+      "dateModified": "2026-11-06T19:37:33.148234+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/a5857248-7737-45dc-974a-954d09be9306/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 43962,
+      "encodingFormat": "image/png",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Partner"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/fea9408b-61ee-46e8-851e-9b49088fd5e6",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "partner-eu.png",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T19:37:36.870549+00:00",
+      "dateCreated": "2026-11-06T19:37:36.870549+00:00",
+      "dateModified": "2026-11-06T19:37:37.706178+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/fea9408b-61ee-46e8-851e-9b49088fd5e6/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 41030,
+      "encodingFormat": "image/png",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Partner"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/14a6f3ff-c6c9-4e91-aca8-e61c61413032",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "background.jpg",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-06T20:10:48.705494+00:00",
+      "dateCreated": "2026-11-06T20:10:48.705494+00:00",
+      "dateModified": "2026-11-06T20:10:49.863927+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/14a6f3ff-c6c9-4e91-aca8-e61c61413032/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 507629,
+      "encodingFormat": "image/jpeg",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/BackgroundImage"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/5e0f9468-7a2b-4396-a1c0-5152cf923300/resources/97d40a4a-a063-4728-b77c-ba4de5251e89",
+      "@type": [
+        "File",
+        "http://purl.org/wf4ever/wf4ever#Resource",
+        "Thing"
+      ],
+      "name": "contribute.md",
+      "creator": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "author": [
+        {
+          "@id": "https://orcid.org/0000-0002-1784-2920"
+        }
+      ],
+      "contributor": [],
+      "sdDatePublished": "2026-11-20T21:40:59.443047+00:00",
+      "dateCreated": "2026-11-20T21:40:59.443047+00:00",
+      "dateModified": "2026-11-21T09:31:51.803642+00:00",
+      "contentUrl": "https://api.rohub.org/api/resources/97d40a4a-a063-4728-b77c-ba4de5251e89/download/",
+      "license": {
+        "@id": "https://choosealicense.com/no-permission/"
+      },
+      "contentSize": 449,
+      "encodingFormat": "text/markdown",
+      "https://schema.org/additionalType": {
+        "@id": "https://w3id.org/ro/terms/cca/Contribute"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/51f43f9d-00e4-4908-b1cb-3bbd715b0f95",
+      "name": "Knowledge Sector (EEA)",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/195a29e1-2524-4d4b-9814-c43f2a73adb2"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/2c5b9a0e-271f-4943-a723-4d2d0dd8f0b9",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Lemma"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "13.5",
+      "name": "publication",
+      "https://w3id.org/ro/terms/earth-science#normScore": "21.704180064308684"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/18fc967c-a1a8-441c-b7c7-ca254300129c",
+      "name": "Not reported/ Unknown",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/9eddcf06-31e4-4959-8f6b-2d7721f365dc",
+      "https://w3id.org/ro/terms/earth-science#score": "14.4",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "20.083682008368203",
+      "name": "publication"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/2cd2f4a3-647b-401d-873b-4c727e46e91d",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "name": "none"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/d70ac3dc-7c2b-449c-b8a8-7e626711a3f8",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/6e884b87-4746-40ef-96d0-89af289eb262"
+      },
+      "name": "Policy Scale"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/47bf62dd-b2c7-4055-9f87-fda93613bde6",
+      "name": "arrangement",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "4.3",
+      "https://w3id.org/ro/terms/earth-science#normScore": "5.997210599721061"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/627584e9-1e30-4cb9-9999-f0d71f7952d6",
+      "https://w3id.org/ro/terms/earth-science#score": "12.2",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Phrase"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "14.805825242718445",
+      "name": "nanopublication network"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/911ea3da-62d1-4ba7-8059-06eedc141d44",
+      "name": "none",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/761bc094-79dc-498e-8319-6cd5354e2025",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#NASA"
+      ],
+      "name": "Mathematical and computer sciences"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/bd2a977b-bc70-4600-bb74-293e7b62d249",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/38baf533-297c-4e13-bae3-14f9f2db9fba"
+      },
+      "name": "IPCC"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/2e863108-6ecf-4b51-8792-5fdb14416f63",
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/93c5496e-d858-4ce3-9078-205e7f6a763d"
+      },
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "name": "Key Type Measures"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/f1485d3a-a436-4f66-9383-635ffc913d19",
+      "name": "community",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "5.6",
+      "https://w3id.org/ro/terms/earth-science#normScore": "7.810320781032079"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/7b29bf0d-cf2d-4327-ad81-ab8f461ca83c",
+      "https://w3id.org/ro/terms/earth-science#score": "10.8",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "15.062761506276154",
+      "name": "question"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/33ef079d-95b3-47d3-a5d3-7b49c34c3971",
+      "name": "dashboard",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "7.7",
+      "https://w3id.org/ro/terms/earth-science#normScore": "10.739191073919109"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/3a2e3f32-df3b-40fb-9160-3aa1cf52279f",
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/18fc967c-a1a8-441c-b7c7-ca254300129c"
+      },
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "name": "Funding"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/ba107e4a-5e82-496f-a0f3-5768776c61af",
+      "https://w3id.org/ro/terms/earth-science#normScore": "38.10679611650485",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Phrase"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "31.4",
+      "name": "climate Matchmaker space"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/01b4cbe8-5a9a-4b96-a6ae-c5fe7c81e27b",
+      "name": "Geographical Scope",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/753c93c7-f8d6-47d0-944d-f3d97465e5be"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/e3985479-f6b5-469b-844f-b25549f1c2a2",
+      "name": "none",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/1f83ac8c-e2a7-4c8b-8106-24764e4c149c",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Sentence"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "68.56856856856857",
+      "name": "The content is not copied here - each panel runs a grlc query nanopublication against the nanopublication network when the page is opened, so what a visitor reads is whatever the community has published by then.",
+      "https://w3id.org/ro/terms/earth-science#score": "68.5"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/3e2c0a0e-2416-471d-b72b-ede6b77e1aa0",
+      "name": "dashboard",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Lemma"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "11.414790996784566",
+      "https://w3id.org/ro/terms/earth-science#score": "7.1"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/6230a80a-fd90-451e-befb-6a21d626aa8b",
+      "name": "http",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "4.0",
+      "https://w3id.org/ro/terms/earth-science#normScore": "5.578800557880057"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/34be8611-154f-4c3a-a170-0554bfecd284",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "name": "none"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/fd7ef565-7fe5-4b5a-90a3-ea6dd7e3420a",
+      "https://w3id.org/ro/terms/earth-science#score": "3.0",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Phrase"
+      ],
+      "name": "fair Digital Objects",
+      "https://w3id.org/ro/terms/earth-science#normScore": "3.640776699029126"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/c55e1cf3-6829-4ebd-9957-5bc2617cc75f",
+      "https://w3id.org/ro/terms/earth-science#normScore": "9.483960948396096",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "name": "content",
+      "https://w3id.org/ro/terms/earth-science#score": "6.8"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/b2a18ff3-182a-4606-8085-fafde946d5aa",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Lemma"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "10.2",
+      "name": "query",
+      "https://w3id.org/ro/terms/earth-science#normScore": "16.39871382636656"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/ebb0cd03-ca20-491f-a7bd-7854a91aabbb",
+      "name": "read",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "8.78661087866109",
+      "https://w3id.org/ro/terms/earth-science#score": "6.3"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/acd4b811-5bae-42bc-ae90-0c1000d88b00",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FieldOfResearch"
+      ],
+      "name": "Information and Computing Sciences"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/6e884b87-4746-40ef-96d0-89af289eb262",
+      "name": "International/ Global policy",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/393d7bf4-94a0-4006-b9cf-2adc03e643c3",
+      "name": "Geosciences",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#NASA"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/1798de41-0f01-48b1-9530-e806fdaaa727",
+      "name": "IT-computer sciences",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#IPTC"
+      ],
+      "https://w3id.org/ro/terms/earth-science#path": "Science and technology/Technology and engineering/IT-computer sciences"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/6e859f82-86b7-416f-b2e0-a676606fd18b",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Sentence"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "31.43143143143143",
+      "name": "FAIR Climate Matchmaker (dashboard composed from FAIR Digital Objects) A reading of the FAIR Climate Matchmaker space (https://w3id.org/spaces/fairclimatematchmaker) whose arrangement is described by this Research Object: which published queries to run, on which page, and how to show their results.",
+      "https://w3id.org/ro/terms/earth-science#score": "31.4"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/7a226acf-84b1-40b2-9bc4-21d3e93ab7a8",
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/e9219a28-a690-4cf6-b389-606e396378b6"
+      },
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "name": "Climate-ADAPT Adaptation Sectors"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/66b656a3-d78f-4d1e-afea-b06284d6c653",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/2cd2f4a3-647b-401d-873b-4c727e46e91d"
+      },
+      "name": "Methodology"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/b4ded0ed-40c4-4193-a5ba-02aacfb30dab",
+      "https://w3id.org/ro/terms/earth-science#normScore": "11.414790996784566",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Lemma"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "7.1",
+      "name": "network"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/9e42ea97-b414-4f09-8dc0-73fc8d146b9f",
+      "name": "Data Format",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#SUBTOPIC"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/93c5496e-d858-4ce3-9078-205e7f6a763d",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "name": "Knowledge and Behavioural Change"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/cd75d705-a334-4e20-b578-740a3bd20f96",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/34be8611-154f-4c3a-a170-0554bfecd284"
+      },
+      "name": "Climate Hazard"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/25ede43c-2f2e-41aa-ac6a-f392830fb060",
+      "name": "User Needs (RAST)",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/911ea3da-62d1-4ba7-8059-06eedc141d44"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/e7b8e217-c100-4caf-baa8-5e8d68d426f0",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#NASA"
+      ],
+      "name": "Social and information sciences"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/0c7ac970-c699-479e-bec8-3cd670bbbbe7",
+      "name": "page",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "5.578800557880057",
+      "https://w3id.org/ro/terms/earth-science#score": "4.0"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/890b8244-c210-49dd-bbfb-44fd0226d6d0",
+      "name": "grlc query nanopublication",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Phrase"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "13.4",
+      "https://w3id.org/ro/terms/earth-science#normScore": "16.262135922330096"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/86ac3b72-a490-46f1-9d30-622a448d326f",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Phrase"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "27.184466019417474",
+      "https://w3id.org/ro/terms/earth-science#score": "22.4",
+      "name": "visitor read"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/00abc4a5-c802-46eb-846a-90f9c4fc4a2e",
+      "https://w3id.org/ro/terms/earth-science#score": "11.4",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Lemma"
+      ],
+      "name": "Matchmaker",
+      "https://w3id.org/ro/terms/earth-science#normScore": "18.327974276527332"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/af4948f9-af8e-42a6-8686-ad46bd2d23ec",
+      "name": "Computer programming and software",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#SUBTOPIC"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/8443a117-9e29-428b-8adf-e1c97be9bde3",
+      "name": "computer network",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Concept"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "7.8",
+      "https://w3id.org/ro/terms/earth-science#normScore": "10.87866108786611"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/86a33e6b-84ef-4601-8bd0-95c750372365",
+      "name": "Stakeholders",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "https://w3id.org/ro/terms/earth-science#value": {
+        "@id": "https://w3id.org/ro-id/enrichment/e3985479-f6b5-469b-844f-b25549f1c2a2"
+      }
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/e9219a28-a690-4cf6-b389-606e396378b6",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "name": "none"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/47631815-8faa-496e-b290-51d68043f127",
+      "name": "Meteorology and climatology",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#SUBTOPIC"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/085ef959-a644-46f6-9fe0-7c1a7e10fc0b",
+      "https://w3id.org/ro/terms/earth-science#normScore": "10.610932475884246",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Lemma"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "6.6",
+      "name": "content"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/d921cc5a-bb22-44b6-aede-f40de17af539",
+      "name": "Information Systems",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#SUBTOPIC"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/753c93c7-f8d6-47d0-944d-f3d97465e5be",
+      "name": "none",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/4cb644a4-dfca-4b05-bd7d-cc2978a74975",
+      "https://w3id.org/ro/terms/earth-science#normScore": "10.128617363344052",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#Lemma"
+      ],
+      "https://w3id.org/ro/terms/earth-science#score": "6.3",
+      "name": "read"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/e453c3e4-553a-4b5f-9f07-f34c10d8a38d",
+      "@type": [
+        "https://w3id.org/contentdesc#Domain"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "16.822429906542055",
+      "name": "music",
+      "https://w3id.org/ro/terms/earth-science#score": "1.8"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/84f37ad0-17b2-407c-bcb1-9071a2dc91a7",
+      "@type": [
+        "https://w3id.org/contentdesc#Domain"
+      ],
+      "name": "publishing",
+      "https://w3id.org/ro/terms/earth-science#score": "3.7",
+      "https://w3id.org/ro/terms/earth-science#normScore": "34.57943925233644"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/814ecf8b-cb95-489f-839f-84b298b6b9b7",
+      "@type": [
+        "https://w3id.org/contentdesc#Domain"
+      ],
+      "https://w3id.org/ro/terms/earth-science#normScore": "18.691588785046726",
+      "name": "information technology",
+      "https://w3id.org/ro/terms/earth-science#score": "2.0"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/38baf533-297c-4e13-bae3-14f9f2db9fba",
+      "name": "Social: Informational",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ]
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/4c0003b2-60bd-44dc-8d85-450de001dcbf",
+      "https://w3id.org/ro/terms/earth-science#score": "3.2",
+      "@type": [
+        "https://w3id.org/contentdesc#Domain"
+      ],
+      "name": "computer science",
+      "https://w3id.org/ro/terms/earth-science#normScore": "29.906542056074763"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/2d7c208d-681b-457a-b1f6-80bc4b54778b",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#SUBTOPIC"
+      ],
+      "name": "Documentation and information science"
+    },
+    {
+      "@id": "https://w3id.org/ro-id/enrichment/195a29e1-2524-4d4b-9814-c43f2a73adb2",
+      "@type": [
+        "https://w3id.org/ro/terms/earth-science#FCID"
+      ],
+      "name": "Climate change impacts, risks and adaptation"
+    },
+    {
+      "@id": "https://orcid.org/0000-0002-1784-2920",
+      "name": "Anne Fouilloux",
+      "@type": [
+        "http://xmlns.com/foaf/0.1/Agent"
+      ]
+    }
+  ]
+}
