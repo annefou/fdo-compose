@@ -159,8 +159,6 @@ function remembered(pid, store = sessionStorage, maxAge = 30 * 60 * 1000) {
   return null;
 }
 
-/** Objects whose crate came from a copy rather than from ROHub just now */
-const staleCrates = new Set();
 
 /** Ask ROHub, twice, each time giving up after `ms`: a gateway timeout takes 30s to say so */
 async function fetchCrate(uuid, attempts = 2, ms = 20000) {
@@ -182,21 +180,43 @@ async function fetchCrate(uuid, attempts = 2, ms = 20000) {
   throw last;
 }
 
+/** The snapshot of an object published with the viewer, if there is one */
+const snapshotOf = (uuid) =>
+  fetch(`snapshots/${uuid}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+/**
+ * Ask ROHub for a fresh crate after a copy has been shown. If the object changed, forget
+ * the copy and draw the page again; if not, or if ROHub cannot answer, nothing moves.
+ */
+function refreshInBackground(pid, uuid, shown) {
+  fetchCrate(uuid).then((fresh) => {
+    remember(pid, fresh);
+    if (JSON.stringify(fresh) === JSON.stringify(shown)) return;
+    crates.delete(pid);
+    if (wanted() === pid) show(pid);
+  }).catch(() => { /* the copy stays; the next visit asks again */ });
+}
+
 async function crateOf(pid) {
   const match = RO_PID.exec(pid.trim());
   if (!match) throw new Error(`not a ROHub PID: ${pid}`);
+  // Read in this session already: ROHub need not be asked again
   let crate = remembered(pid);
   if (!crate) {
-    try {
-      crate = await fetchCrate(match[1]);
-      remember(pid, crate);
-    } catch (error) {
-      // ROHub is down or slow: use the last copy this browser read, or the snapshot
-      // published with the viewer, rather than an empty page
-      crate = remembered(pid, localStorage, Infinity)
-        || await fetch(`snapshots/${match[1]}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-      if (!crate) throw new Error(`ROHub could not be reached (${error.message}); try again in a minute`);
-      staleCrates.add(pid);
+    // A copy this browser read before, or the snapshot published with the viewer, is shown
+    // at once: ROHub can take half a minute to build a crate, and a page should not wait
+    // for it. ROHub is asked in the background and the page follows if anything changed.
+    const copy = remembered(pid, localStorage, Infinity) || await snapshotOf(match[1]);
+    if (copy) {
+      crate = copy;
+      refreshInBackground(pid, match[1], copy);
+    } else {
+      try {
+        crate = await fetchCrate(match[1]);
+        remember(pid, crate);
+      } catch (error) {
+        throw new Error(`ROHub could not be reached (${error.message}); try again in a minute`);
+      }
     }
   }
   const graph = crate["@graph"] || [];
@@ -1322,10 +1342,6 @@ async function show(pid) {
   }
 
   main.replaceChildren();
-  if (staleCrates.has(pid)) {
-    main.append(el("p", { class: "muted" },
-      "ROHub is not answering right now, so this page shows the copy read most recently. Reload in a few minutes for the latest."));
-  }
   // A member opened from a collection is shown the way that collection says its members
   // are shown; failing that, the way this viewer shows an object of its kind.
   let pages = object.pages;
