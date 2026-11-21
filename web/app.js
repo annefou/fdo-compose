@@ -579,6 +579,15 @@ function templateForm(template, service, object) {
 
   // A statement reads as a sentence: the words the template declares, then the blank.
   const statements = el("div", { class: "npstatements" });
+
+  // Every published story carries a short name of its own, which becomes part of its
+  // address, so the form asks for one rather than inventing it.
+  const shortName = el("input", { type: "text", placeholder: "F2A-MM-US1" });
+  shortName.addEventListener("input", () => values.set("id", [shortName.value.trim()]));
+  statements.append(el("div", { class: "nprow" },
+    el("span", { class: "npsays" }, "short name"),
+    el("div", { class: "npcontrols" }, shortName,
+      el("span", { class: "npfixed" }, "used in its address; letters, digits and dashes"))));
   for (const field of template.fields) {
     const row = el("div", { class: "nprow" });
     row.append(el("span", { class: "npsays" }, field.asks,
@@ -650,6 +659,10 @@ function templateForm(template, service, object) {
           el("strong", {}, example.checked ? "Published as an example: " : "Published: "),
           link(answer.uri),
           el("span", { class: "muted" }, " — this is its permanent address, copy it if you need it."));
+        if (answer.ignored?.length) {
+          status.append(el("p", { class: "muted" },
+            `Not published, because the user story vocabulary has no place for them yet: ${answer.ignored.join(", ")}.`));
+        }
         form.querySelectorAll('input:not([type="checkbox"]), textarea').forEach((control) => { control.value = ""; });
         consent.checked = false;
         example.checked = false;
@@ -886,6 +899,8 @@ async function renderPanel(panel, object, into) {
     const file = fileFor(object.brand || object, "Contribute", /^contribute\.(md|txt)$/i);
     const intro = file ? await fetch(file.url).then((r) => r.text()).catch(() => "") : "";
     const form = await readTemplate(template);
+    const heading = section.querySelector("h2");
+    if (heading && form.name) heading.textContent = `Add a ${form.name.toLowerCase()}`;
     if (intro.trim()) section.append(el("div", { class: "prose", html: markdown(intro.trim()) }));
     else if (form.description) section.append(el("p", { class: "prose" }, form.description));
 
